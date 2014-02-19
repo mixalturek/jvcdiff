@@ -1,8 +1,8 @@
-package net.dongliu.jvcdiff.vcdiff.codetable;
+package net.dongliu.vcdiff.codetable;
 
-import net.dongliu.jvcdiff.vcdiff.io.ByteBufferSeekableStream;
-import net.dongliu.jvcdiff.vcdiff.io.IOUtils;
-import net.dongliu.jvcdiff.vcdiff.io.SeekableStream;
+import net.dongliu.vcdiff.io.ByteBufferSeekableStream;
+import net.dongliu.vcdiff.io.IOUtils;
+import net.dongliu.vcdiff.io.SeekableStream;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -10,6 +10,7 @@ import java.util.Arrays;
 /**
  * Cache used for encoding/decoding addresses.
  * Used to efficiently encode the addresses of COPY instructions
+ *
  * @author dongliu
  */
 public class AddressCache {
@@ -21,7 +22,7 @@ public class AddressCache {
     /**
      * A "near" cache is an array with "s_near" slots, each containing an
      * address used for encoding addresses nearby to previously encoded
-     * addresses 
+     * addresses
      */
     private int[] near;
 
@@ -51,9 +52,8 @@ public class AddressCache {
     }
 
     /**
-     * 
      * @param here the current location in the target data
-     * @param mode 
+     * @param mode
      * @return
      * @throws IOException
      */
@@ -70,8 +70,8 @@ public class AddressCache {
             // Near modes: The "near modes" are in the range [2,nearSize+1]
             // The address was encoded  as the integer value "addr - near[m-2]"
             address = near[mode - 2] + IOUtils.read7bitIntBE(addressStream);
-            if (address == 24178999){
-                System.out.println(near[mode - 2] );
+            if (address == 24178999) {
+                System.out.println(near[mode - 2]);
             }
         } else if (mode <= nearSize + sameSize + 1) {
             // Same modes: are in the range [nearSize+2,nearSize+sameSize+1].
@@ -79,8 +79,8 @@ public class AddressCache {
             int m = mode - (nearSize + 2);
             address = same[(m * 256) + IOUtils.readByte(addressStream)];
         } else {
-            // should never rearch here.
-            throw new RuntimeException("Should never rearch here");
+            // should never reach here.
+            throw new RuntimeException("Should never reach here");
         }
 
         update(address);
@@ -89,6 +89,7 @@ public class AddressCache {
 
     /**
      * update caches each time a COPY instruction is processed by the encoder or decoder.
+     *
      * @param address
      */
     private void update(int address) {

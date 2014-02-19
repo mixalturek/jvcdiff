@@ -1,4 +1,4 @@
-package net.dongliu.jvcdiff.vcdiff.io;
+package net.dongliu.vcdiff.io;
 
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
@@ -8,21 +8,20 @@ import java.nio.ByteBuffer;
  * Wraps a byte array / byte buffer as a source
  *
  * @author dongliu
- *
  */
 public class ByteBufferSeekableStream implements SeekableStream {
-    
+
     private ByteBuffer buffer;
-    
+
     private boolean readOnly;
-    
+
     /**
      * Constructs a new ByteArraySeekableSource.
      */
     public ByteBufferSeekableStream(byte[] source) {
         this(source, false);
     }
-    
+
     /**
      * Constructs a new ByteArraySeekableSource.
      */
@@ -30,7 +29,7 @@ public class ByteBufferSeekableStream implements SeekableStream {
         this.buffer = ByteBuffer.wrap(source);
         this.readOnly = readOnly;
     }
-    
+
     public ByteBufferSeekableStream(ByteBuffer bytebuffer) {
         this.buffer = bytebuffer;
         this.readOnly = bytebuffer.isReadOnly();
@@ -39,7 +38,7 @@ public class ByteBufferSeekableStream implements SeekableStream {
     @Override
     public void seek(int pos) throws IOException {
         if (pos < 0 || pos > this.buffer.limit()) {
-            throw new IOException("Not a seekable pos, larger than lengh or less than zero.");
+            throw new IOException("Not a seekable pos, larger than length or less than zero.");
         }
         this.buffer.position(pos);
     }
@@ -57,18 +56,18 @@ public class ByteBufferSeekableStream implements SeekableStream {
 
     @Override
     public int read(byte[] data, int offset, int length) {
-        
+
         if (!this.buffer.hasRemaining()) {
             return -1;
         }
-        
+
         int byteRead;
         if (length > this.buffer.remaining()) {
             byteRead = this.buffer.remaining();
         } else {
             byteRead = length;
         }
-        
+
         this.buffer.get(data, offset, byteRead);
         return byteRead;
     }

@@ -1,23 +1,21 @@
-package net.dongliu.jvcdiff.vcdiff.io;
+package net.dongliu.vcdiff.io;
 
 import java.io.IOException;
 
 /**
  * Wraps a SeekableStream with given offset and length.
  * TODO: check if read/write exceed bounds.
- *  
- * @author dongliu
  *
+ * @author dongliu
  */
 public class SlicedSeekableStream implements SeekableStream {
-    
+
     private SeekableStream ss;
     private int sOffset;
     private int slength;
-    
+
     /**
      * Constructs a new RandomAccessFileSeekableSource.
-     * @param raf
      */
     public SlicedSeekableStream(SeekableStream ss, int offset, int length) {
         if (ss == null) {
@@ -31,8 +29,8 @@ public class SlicedSeekableStream implements SeekableStream {
     public void seek(int pos) throws IOException {
         ss.seek(sOffset + pos);
     }
-    
-    public int pos() throws IOException{
+
+    public int pos() throws IOException {
         return ss.pos() - sOffset;
     }
 
@@ -81,5 +79,5 @@ public class SlicedSeekableStream implements SeekableStream {
         seek(pos() + length);
         return new SlicedSeekableStream(this, ss.pos(), length);
     }
-    
+
 }

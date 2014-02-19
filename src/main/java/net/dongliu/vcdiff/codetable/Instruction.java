@@ -1,10 +1,9 @@
-package net.dongliu.jvcdiff.vcdiff.codetable;
+package net.dongliu.vcdiff.codetable;
 
 /**
  * vcdiff op instruction.
  *
  * @author dongliu
- *
  */
 public class Instruction {
     public enum InstructionType {
@@ -20,18 +19,18 @@ public class Instruction {
         }
     }
 
-    
+
     private InstructionType ist;
     private byte size;
     private byte mode;
-    
-    
+
+
     public Instruction(InstructionType ist, byte size, byte mode) {
         this.ist = ist;
         this.size = size;
         this.mode = mode;
     }
-    
+
     public Instruction(byte type, byte size, byte mode) {
         InstructionType ist;
         switch (type) {
@@ -55,7 +54,7 @@ public class Instruction {
         this.size = size;
         this.mode = mode;
     }
-    
+
     public InstructionType getIst() {
         return ist;
     }
@@ -67,5 +66,5 @@ public class Instruction {
     public byte getMode() {
         return mode;
     }
-    
+
 }

@@ -1,19 +1,22 @@
-package net.dongliu.jvcdiff.vcdiff.codetable;
+package net.dongliu.vcdiff.codetable;
 
-import net.dongliu.jvcdiff.vcdiff.codetable.Instruction.InstructionType;
+import net.dongliu.vcdiff.codetable.Instruction.InstructionType;
 
 /**
  * vcdiff instruction table.
  *
  * @author dongliu
- *
  */
 public class CodeTable {
 
-    /** Default code table specified in RFC 3284. */
+    /**
+     * Default code table specified in RFC 3284.
+     */
     public static final CodeTable Default = BuildDefaultCodeTable();
 
-    /** code table entries. */
+    /**
+     * code table entries.
+     */
     Instruction[][] entries = new Instruction[256][2];
 
     public CodeTable(byte[] bytes) {
@@ -61,19 +64,20 @@ public class CodeTable {
      *      21.  Copy        4      [0,8]   Add        1        0    [247,255]
      *   --------------------------------------------------------------------
      * </pre>
+     *
      * @return
      */
     private static CodeTable BuildDefaultCodeTable() {
         // Defaults are NoOps with size and mode 0.
         Instruction[][] entries = new Instruction[256][2];
-        
+
         // Entry 0. RUN instruction
         entries[0][0] = new Instruction(InstructionType.RUN, (byte) 0, (byte) 0);
         entries[0][1] = new Instruction(InstructionType.NO_OP, (byte) 0, (byte) 0);
-        
+
         // Entries 1-18. 18 single ADD instructions
         for (byte i = 1; i <= 18; i++) {
-            entries[i][0] = new Instruction(InstructionType.ADD, (byte) (i-1), (byte) 0);
+            entries[i][0] = new Instruction(InstructionType.ADD, (byte) (i - 1), (byte) 0);
             entries[i][1] = new Instruction(InstructionType.NO_OP, (byte) 0, (byte) 0);
         }
 

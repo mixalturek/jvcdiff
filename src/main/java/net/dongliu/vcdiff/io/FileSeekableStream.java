@@ -1,4 +1,4 @@
-package net.dongliu.jvcdiff.vcdiff.io;
+package net.dongliu.vcdiff.io;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -10,7 +10,6 @@ import java.nio.channels.FileChannel;
  * Wraps a random access file.
  *
  * @author dongliu
- *
  */
 public class FileSeekableStream implements SeekableStream {
 
@@ -19,13 +18,14 @@ public class FileSeekableStream implements SeekableStream {
 
     /**
      * Constructs a new RandomAccessFileSeekableSource.
+     *
      * @param file
-     * @throws FileNotFoundException 
+     * @throws FileNotFoundException
      */
     public FileSeekableStream(RandomAccessFile file) throws FileNotFoundException {
         this(file, false);
     }
-    
+
     public FileSeekableStream(RandomAccessFile file, boolean readOnly) throws FileNotFoundException {
         if (file == null) {
             throw new NullPointerException();
@@ -37,8 +37,8 @@ public class FileSeekableStream implements SeekableStream {
     public void seek(int pos) throws IOException {
         raf.seek(pos);
     }
-    
-    public int pos() throws IOException{
+
+    public int pos() throws IOException {
         return (int) raf.getFilePointer();
     }
 
@@ -95,8 +95,8 @@ public class FileSeekableStream implements SeekableStream {
 
     @Override
     public SeekableStream slice(int length) throws IOException {
-        // use bytebuffer to slice.
-        // this strategy is SPECIALLY for jvcdiff use.
+        // use byteBuffer to slice.
+        // this strategy is SPECIALLY for jVcdiff use.
         FileChannel fc = this.raf.getChannel();
         MappedByteBuffer buffer = fc.map(FileChannel.MapMode.READ_ONLY,
                 this.raf.getFilePointer(), length);
@@ -104,5 +104,5 @@ public class FileSeekableStream implements SeekableStream {
         return new ByteBufferSeekableStream(buffer);
     }
 
-    
+
 }

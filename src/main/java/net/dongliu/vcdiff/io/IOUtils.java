@@ -1,7 +1,4 @@
-package net.dongliu.jvcdiff.vcdiff.io;
-
-import net.dongliu.jvcdiff.vcdiff.io.ByteBufferSeekableStream;
-import net.dongliu.jvcdiff.vcdiff.io.SeekableStream;
+package net.dongliu.vcdiff.io;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -11,13 +8,13 @@ import java.io.InputStream;
  * IOUtils form vcdiff.
  *
  * @author dongliu
- *
  */
 public class IOUtils {
-    
+
     /**
-     * read N bytes from inputstream.
+     * read N bytes from input stream.
      * throw exception when not enough data in is.
+     *
      * @param is
      * @param size
      * @throws IOException
@@ -37,7 +34,8 @@ public class IOUtils {
     }
 
     /**
-     * read one byte from inputstream.
+     * read one byte from input stream.
+     *
      * @return
      * @throws IOException
      */
@@ -49,11 +47,12 @@ public class IOUtils {
         }
         return byti;
     }
-    
+
     /**
-     * read 7 bit enconded int.by bigendian.
+     * read 7 bit encoded int.by big endian.
+     *
      * @return
-     * @throws IOException 
+     * @throws IOException
      */
     public static int read7bitIntBE(SeekableStream ss) throws IOException {
         int ret = 0;
@@ -61,7 +60,7 @@ public class IOUtils {
             int b = ss.read();
             if (b == -1) {
                 throw new IndexOutOfBoundsException(
-                        "Not enough data in inputstream.");
+                        "Not enough data in inputStream.");
             }
             ret = (ret << 7) | (b & 0x7f);
             // end of int encoded.
@@ -75,6 +74,7 @@ public class IOUtils {
 
     /**
      * read 7 bit enconded int.by bigendian.
+     *
      * @return
      * @throws IOException
      */
@@ -84,7 +84,7 @@ public class IOUtils {
             int b = is.read();
             if (b == -1) {
                 throw new IndexOutOfBoundsException(
-                        "Not enough data in inputstream.");
+                        "Not enough data in inputStream.");
             }
             ret = (ret << 7) | (b & 0x7f);
             // end of int encoded.
@@ -97,7 +97,6 @@ public class IOUtils {
     }
 
     /**
-     * 
      * @param source
      * @param size
      * @return
@@ -111,40 +110,43 @@ public class IOUtils {
             if (readSize < 0) {
                 // end of is
                 throw new IndexOutOfBoundsException(
-                        "Not enough data in inputstream, require:" + (size - offset));
+                        "Not enough data in inputStream, require:" + (size - offset));
             }
             offset += readSize;
         }
         return data;
     }
-    
+
     /**
      * 从stream中获得一个指定大小为length，从当前pos处开始的stream.
-     * 副作用：ss的postion会增加length.
+     * 副作用：ss的position会增加length.
+     *
      * @param ss
      * @return
-     * @throws IOException 
+     * @throws IOException
      */
-    public static SeekableStream getStreamView(SeekableStream ss, int length, boolean shareData) throws IOException{
-        if (shareData){
+    public static SeekableStream getStreamView(SeekableStream ss, int length, boolean shareData) throws IOException {
+        if (shareData) {
             return ss.slice(length);
         } else {
             byte[] bytes = readBytes(ss, length);
             return new ByteBufferSeekableStream(bytes, true);
         }
     }
-    
+
     /**
-     * close queitly.
+     * close quietly.
+     *
      * @param closeable
      */
-    public static void closeQueitly(Closeable closeable) {
+    public static void closeQuietly(Closeable closeable) {
         if (closeable == null) {
             return;
         }
         try {
             closeable.close();
-        } catch (IOException ignore) {}
+        } catch (IOException ignore) {
+        }
     }
 
     public static void copy(SeekableStream sourceStream, SeekableStream targetDataStream, int size)
@@ -155,6 +157,7 @@ public class IOUtils {
 
     /**
      * bytes to int.
+     *
      * @return
      */
     public static int makeInt(byte b3, byte b2, byte b1, byte b0) {
@@ -163,6 +166,7 @@ public class IOUtils {
 
     /**
      * bytes to short.
+     *
      * @return
      */
     public static short makeShort(byte b1, byte b0) {
@@ -171,6 +175,7 @@ public class IOUtils {
 
     /**
      * read int, Big-endian.
+     *
      * @return
      */
     public static int makeIntB(byte[] ba, int pos) {
@@ -182,6 +187,7 @@ public class IOUtils {
 
     /**
      * read int, Small-endian.
+     *
      * @return
      */
     public static int makeIntS(byte[] ba, int pos) {

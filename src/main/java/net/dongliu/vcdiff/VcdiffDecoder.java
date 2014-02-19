@@ -1,14 +1,14 @@
-package net.dongliu.jvcdiff.vcdiff;
+package net.dongliu.vcdiff;
 
-import net.dongliu.jvcdiff.vcdiff.codetable.Instruction;
-import net.dongliu.jvcdiff.vcdiff.codetable.Instruction.InstructionType;
-import net.dongliu.jvcdiff.vcdiff.codetable.AddressCache;
-import net.dongliu.jvcdiff.vcdiff.codetable.CodeTable;
-import net.dongliu.jvcdiff.vcdiff.exception.PatchException;
-import net.dongliu.jvcdiff.vcdiff.io.ByteBufferSeekableStream;
-import net.dongliu.jvcdiff.vcdiff.io.FileSeekableStream;
-import net.dongliu.jvcdiff.vcdiff.io.SeekableStream;
-import net.dongliu.jvcdiff.vcdiff.io.IOUtils;
+import net.dongliu.vcdiff.codetable.Instruction;
+import net.dongliu.vcdiff.codetable.Instruction.InstructionType;
+import net.dongliu.vcdiff.codetable.AddressCache;
+import net.dongliu.vcdiff.codetable.CodeTable;
+import net.dongliu.vcdiff.exception.VcdiffDecodeException;
+import net.dongliu.vcdiff.io.ByteBufferSeekableStream;
+import net.dongliu.vcdiff.io.FileSeekableStream;
+import net.dongliu.vcdiff.io.SeekableStream;
+import net.dongliu.vcdiff.io.IOUtils;
 
 import java.io.*;
 
@@ -44,10 +44,10 @@ public class VcdiffDecoder {
      * @param patchFile the patch file.
      * @param targetFile the patch result file.
      * @throws IOException
-     * @throws net.dongliu.jvcdiff.vcdiff.exception.PatchException
+     * @throws net.dongliu.vcdiff.exception.VcdiffDecodeException
      */
     public static void patch(RandomAccessFile originFile, File patchFile, RandomAccessFile targetFile)
-            throws IOException, PatchException {
+            throws IOException, VcdiffDecodeException {
         SeekableStream originStream = new FileSeekableStream(originFile, true);
         InputStream patchStream = new FileInputStream(patchFile);
         SeekableStream targetStream = new FileSeekableStream(targetFile);
@@ -55,9 +55,9 @@ public class VcdiffDecoder {
             decode(originStream, patchStream, targetStream);
         } finally {
             // close xxxx
-            IOUtils.closeQueitly(originStream);
-            IOUtils.closeQueitly(patchStream);
-            IOUtils.closeQueitly(targetStream);
+            IOUtils.closeQuietly(originStream);
+            IOUtils.closeQuietly(patchStream);
+            IOUtils.closeQuietly(targetStream);
         }
     }
 
@@ -67,10 +67,10 @@ public class VcdiffDecoder {
      * @param patchStream the patch file stream, should be seekable.
      * @param targetStream the output stream of outputfile.
      * @throws IOException
-     * @throws PatchException
+     * @throws net.dongliu.vcdiff.exception.VcdiffDecodeException
      */
     public static void decode(SeekableStream originStream, InputStream patchStream, SeekableStream targetStream)
-            throws IOException, PatchException {
+            throws IOException, VcdiffDecodeException {
         VcdiffDecoder decoder = new VcdiffDecoder(originStream, patchStream, targetStream);
         decoder.decode();
     }
@@ -78,18 +78,18 @@ public class VcdiffDecoder {
     /**
      * do vccode deocode.
      * @throws IOException
-     * @throws PatchException
+     * @throws net.dongliu.vcdiff.exception.VcdiffDecodeException
      */
-    public void decode() throws IOException, PatchException {
+    public void decode() throws IOException, VcdiffDecodeException {
         readHeader();
         while (decodeWindow());
     }
 
-    private void readHeader() throws IOException, PatchException {
+    private void readHeader() throws IOException, VcdiffDecodeException {
         byte[] magic = IOUtils.readBytes(patchStream, 4);
         if (magic[0] != (byte)0xd6 || magic[1] != (byte)0xc3 || magic[2] != (byte)0xc4) {
             // not vcdiff jvcdiff file.
-            throw new PatchException("The jvcdiff file is Not vcdiff file.");
+            throw new VcdiffDecodeException("The jvcdiff file is Not vcdiff file.");
         }
         if (magic[3] != 0) {
             // version num.now is always 0.
@@ -107,7 +107,7 @@ public class VcdiffDecoder {
 
         if ((headerIndicator & 0xf8) != 0) {
             // other bits should be zero.
-            throw new PatchException("Invalid header indicator - bits 3-7 not all zero.");
+            throw new VcdiffDecodeException("Invalid header indicator - bits 3-7 not all zero.");
         }
 
         // if has custome code table.
@@ -128,10 +128,10 @@ public class VcdiffDecoder {
     /**
      * load custome code table.
      * 
-     * @throws PatchException
+     * @throws net.dongliu.vcdiff.exception.VcdiffDecodeException
      * @throws IOException
      */
-    private void readCodeTable() throws IOException, PatchException {
+    private void readCodeTable() throws IOException, VcdiffDecodeException {
         int compressedTableLen = IOUtils.read7bitIntBE(patchStream) - 2;
         int nearSize = patchStream.read();
         int sameSize = patchStream.read();
@@ -145,14 +145,14 @@ public class VcdiffDecoder {
         SeekableStream tableOutput = new ByteBufferSeekableStream(decompressedTableData);
         VcdiffDecoder.decode(tableOriginal, tableDelta, tableOutput);
         if (tableOutput.pos() != 1536) {
-            throw new PatchException("Compressed code table was incorrect size");
+            throw new VcdiffDecodeException("Compressed code table was incorrect size");
         }
 
         codeTable = new CodeTable(decompressedTableData);
         cache = new AddressCache(nearSize, sameSize);
     }
 
-    private boolean decodeWindow() throws IOException, PatchException {
+    private boolean decodeWindow() throws IOException, VcdiffDecodeException {
         
         int windowIndicator = patchStream.read();
         // finished.
@@ -180,7 +180,7 @@ public class VcdiffDecoder {
             // Source data comes from the original stream
             case 1:
                 if (originStream == null) {
-                    throw new PatchException("Source stream required.");
+                    throw new VcdiffDecodeException("Source stream required.");
                 }
                 sourceStream = originStream;
                 break;
@@ -191,7 +191,7 @@ public class VcdiffDecoder {
                 break;
             case 3:
             default:
-                throw new PatchException("Invalid window indicator.");
+                throw new VcdiffDecodeException("Invalid window indicator.");
         }
 
         // Read the source data, if any
@@ -310,12 +310,12 @@ public class VcdiffDecoder {
                         }
                         break;
                     default:
-                        throw new PatchException("Invalid instruction type found.");
+                        throw new VcdiffDecodeException("Invalid instruction type found.");
                 }
             }
         }
-        IOUtils.closeQueitly(targetDataStream);
-        IOUtils.closeQueitly(sourceData);
+        IOUtils.closeQuietly(targetDataStream);
+        IOUtils.closeQuietly(sourceData);
         targetStream.write(targetData, 0, targetLen);
 
         if (hasAdler32Checksum) {

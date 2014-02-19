@@ -1,4 +1,4 @@
-package net.dongliu.jvcdiff.vcdiff.test;
+package net.dongliu.vcdiff.test;
 
 /**
  * @author dongliu
