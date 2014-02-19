@@ -1,14 +1,14 @@
 package net.dongliu.vcdiff;
 
-import net.dongliu.vcdiff.codetable.Instruction;
-import net.dongliu.vcdiff.codetable.Instruction.InstructionType;
-import net.dongliu.vcdiff.codetable.AddressCache;
-import net.dongliu.vcdiff.codetable.CodeTable;
 import net.dongliu.vcdiff.exception.VcdiffDecodeException;
 import net.dongliu.vcdiff.io.ByteBufferSeekableStream;
 import net.dongliu.vcdiff.io.FileSeekableStream;
 import net.dongliu.vcdiff.io.SeekableStream;
-import net.dongliu.vcdiff.io.IOUtils;
+import net.dongliu.vcdiff.vc.AddressCache;
+import net.dongliu.vcdiff.vc.CodeTable;
+import net.dongliu.vcdiff.vc.Instruction;
+import net.dongliu.vcdiff.vc.Vcdiff;
+import net.dongliu.vcdiff.utils.IOUtils;
 
 import java.io.*;
 
@@ -16,23 +16,25 @@ import java.io.*;
  * vcdiff decode.
  *
  * @author dongliu
- *
  */
 public class VcdiffDecoder {
 
-    private SeekableStream originStream;
+    private SeekableStream sourceStream;
 
     private InputStream patchStream;
 
     private SeekableStream targetStream;
 
-    /** code table */
+    /**
+     * code table
+     */
     private CodeTable codeTable = CodeTable.Default;
 
     private AddressCache cache = new AddressCache(4, 3);
 
-    public VcdiffDecoder(SeekableStream originStream, InputStream patchStream, SeekableStream targetStream) {
-        this.originStream = originStream;
+    public VcdiffDecoder(SeekableStream sourceStream, InputStream patchStream,
+                         SeekableStream targetStream) {
+        this.sourceStream = sourceStream;
         this.patchStream = patchStream;
         this.targetStream = targetStream;
     }
@@ -40,22 +42,24 @@ public class VcdiffDecoder {
 
     /**
      * Convenient static method for caller.Apply vcdiff patch file to originFile.
-     * @param originFile the old file.
-     * @param patchFile the patch file.
+     *
+     * @param sourceFile the old file.
+     * @param patchFile  the patch file.
      * @param targetFile the patch result file.
      * @throws IOException
      * @throws net.dongliu.vcdiff.exception.VcdiffDecodeException
      */
-    public static void patch(RandomAccessFile originFile, File patchFile, RandomAccessFile targetFile)
+    public static void patch(RandomAccessFile sourceFile, File patchFile,
+                             RandomAccessFile targetFile)
             throws IOException, VcdiffDecodeException {
-        SeekableStream originStream = new FileSeekableStream(originFile, true);
+        SeekableStream sourceStream = new FileSeekableStream(sourceFile, true);
         InputStream patchStream = new FileInputStream(patchFile);
         SeekableStream targetStream = new FileSeekableStream(targetFile);
         try {
-            decode(originStream, patchStream, targetStream);
+            decode(sourceStream, patchStream, targetStream);
         } finally {
-            // close xxxx
-            IOUtils.closeQuietly(originStream);
+            // close streams
+            IOUtils.closeQuietly(sourceStream);
             IOUtils.closeQuietly(patchStream);
             IOUtils.closeQuietly(targetStream);
         }
@@ -63,36 +67,40 @@ public class VcdiffDecoder {
 
     /**
      * Convenient static method for caller.Apply vcdiff patch file to originFile.
-     * @param originStream the inputstrem of origin file.
-     * @param patchStream the patch file stream, should be seekable.
-     * @param targetStream the output stream of outputfile.
+     *
+     * @param sourceStream the inputStream of source file.
+     * @param patchStream  the patch file stream, should be seekable.
+     * @param targetStream the output stream of output file.
      * @throws IOException
      * @throws net.dongliu.vcdiff.exception.VcdiffDecodeException
      */
-    public static void decode(SeekableStream originStream, InputStream patchStream, SeekableStream targetStream)
+    public static void decode(SeekableStream sourceStream, InputStream patchStream,
+                              SeekableStream targetStream)
             throws IOException, VcdiffDecodeException {
-        VcdiffDecoder decoder = new VcdiffDecoder(originStream, patchStream, targetStream);
+        VcdiffDecoder decoder = new VcdiffDecoder(sourceStream, patchStream, targetStream);
         decoder.decode();
     }
 
     /**
-     * do vccode deocode.
+     * do vcdiff decode.
+     *
      * @throws IOException
      * @throws net.dongliu.vcdiff.exception.VcdiffDecodeException
      */
     public void decode() throws IOException, VcdiffDecodeException {
         readHeader();
-        while (decodeWindow());
+        while (decodeWindow()) ;
     }
 
     private void readHeader() throws IOException, VcdiffDecodeException {
         byte[] magic = IOUtils.readBytes(patchStream, 4);
-        if (magic[0] != (byte)0xd6 || magic[1] != (byte)0xc3 || magic[2] != (byte)0xc4) {
-            // not vcdiff jvcdiff file.
-            throw new VcdiffDecodeException("The jvcdiff file is Not vcdiff file.");
+        //magic num.
+        if (!IOUtils.ArrayEqual(magic, Vcdiff.MAGIC_HEADER, 3)) {
+            // not vcdiff file.
+            throw new VcdiffDecodeException("The file is not valid vcdiff file.");
         }
         if (magic[3] != 0) {
-            // version num.now is always 0.
+            // version num.for standard vcdiff file, is always 0.
             throw new UnsupportedOperationException("Unsupported vcdiff version.");
         }
         byte headerIndicator = (byte) patchStream.read();
@@ -110,15 +118,15 @@ public class VcdiffDecoder {
             throw new VcdiffDecodeException("Invalid header indicator - bits 3-7 not all zero.");
         }
 
-        // if has custome code table.
+        // if has custom code table.
         if (customCodeTable) {
-            // load custome code table
+            // load custom code table
             readCodeTable();
         }
 
         // Ignore the application header if we have one.
         if (applicationHeader) {
-            int appHeaderLength = IOUtils.read7bitIntBE(patchStream);
+            int appHeaderLength = IOUtils.readVarIntBE(patchStream);
             // skip bytes.
             IOUtils.readBytes(patchStream, appHeaderLength);
         }
@@ -126,16 +134,16 @@ public class VcdiffDecoder {
     }
 
     /**
-     * load custome code table.
-     * 
+     * load custom code table.
+     *
      * @throws net.dongliu.vcdiff.exception.VcdiffDecodeException
      * @throws IOException
      */
     private void readCodeTable() throws IOException, VcdiffDecodeException {
-        int compressedTableLen = IOUtils.read7bitIntBE(patchStream) - 2;
+        int compressedTableLen = IOUtils.readVarIntBE(patchStream) - 2;
         int nearSize = patchStream.read();
         int sameSize = patchStream.read();
-        byte[] compressedTableData = IOUtils.readBytes(patchStream,compressedTableLen);
+        byte[] compressedTableData = IOUtils.readBytes(patchStream, compressedTableLen);
 
         byte[] defaultTableData = CodeTable.Default.getBytes();
 
@@ -153,7 +161,7 @@ public class VcdiffDecoder {
     }
 
     private boolean decodeWindow() throws IOException, VcdiffDecodeException {
-        
+
         int windowIndicator = patchStream.read();
         // finished.
         if (windowIndicator == -1) {
@@ -161,7 +169,7 @@ public class VcdiffDecoder {
         }
 
         SeekableStream sourceStream;
-        
+
         int tempTargetStreamPos = -1;
 
         // xdelta3 uses an undocumented extra bit which indicates that there are
@@ -179,12 +187,12 @@ public class VcdiffDecoder {
                 break;
             // Source data comes from the original stream
             case 1:
-                if (originStream == null) {
+                if (this.sourceStream == null) {
                     throw new VcdiffDecodeException("Source stream required.");
                 }
-                sourceStream = originStream;
+                sourceStream = this.sourceStream;
                 break;
-             // Source data comes from the target stream
+            // Source data comes from the target stream
             case 2:
                 sourceStream = targetStream;
                 tempTargetStreamPos = targetStream.pos();
@@ -200,19 +208,19 @@ public class VcdiffDecoder {
         // xdelta 有时生成的diff，sourceLen会大于实际可用的大小.
         int realSourceLen = 0;
         if (sourceStream != null) {
-            sourceLen = IOUtils.read7bitIntBE(patchStream);
-            int sourcePos = IOUtils.read7bitIntBE(patchStream);
-            
+            sourceLen = IOUtils.readVarIntBE(patchStream);
+            int sourcePos = IOUtils.readVarIntBE(patchStream);
+
             sourceStream.seek(sourcePos);
-            
+
             realSourceLen = sourceLen;
-            
+
             if (sourceLen + sourcePos > sourceStream.length()) {
                 realSourceLen = sourceStream.length() - sourcePos;
             }
-            
+
             sourceData = IOUtils.getStreamView(sourceStream, realSourceLen, false);
-            
+
             // restore the position the source stream if appropriate
             if (tempTargetStreamPos != -1) {
                 targetStream.seek(tempTargetStreamPos);
@@ -221,26 +229,26 @@ public class VcdiffDecoder {
         //sourceStream = null;
 
         // Length of the delta encoding
-        IOUtils.read7bitIntBE(patchStream);
+        IOUtils.readVarIntBE(patchStream);
 
         //  Length of the target window.the actual size of the target window after decompression
-        int targetLen = IOUtils.read7bitIntBE(patchStream);
+        int targetLen = IOUtils.readVarIntBE(patchStream);
 
         // Delta_Indicator.
         int deltaIndicator = patchStream.read();
         if (deltaIndicator != 0) {
             throw new UnsupportedOperationException("Compressed delta sections not supported.");
         }
-        
+
         byte[] targetData = new byte[targetLen];
         SeekableStream targetDataStream = new ByteBufferSeekableStream(targetData);
-        
+
         // Length of data for ADDs and RUNs
-        int addRunDataLen = IOUtils.read7bitIntBE(patchStream);
+        int addRunDataLen = IOUtils.readVarIntBE(patchStream);
         // Length of instructions and sizes
-        int instructionsLen = IOUtils.read7bitIntBE(patchStream);
+        int instructionsLen = IOUtils.readVarIntBE(patchStream);
         // Length of addresses for COPYs 
-        int addressesLen = IOUtils.read7bitIntBE(patchStream);
+        int addressesLen = IOUtils.readVarIntBE(patchStream);
 
         // If we've been given a checksum, we have to read it and we might as well
         int checksumInFile = 0;
@@ -272,17 +280,18 @@ public class VcdiffDecoder {
             for (int i = 0; i < 2; i++) {
                 Instruction instruction = codeTable.get(instructionIndex, i);
                 int size = instruction.getSize();
-                if (size == 0 && instruction.getIst() != InstructionType.NO_OP) {
-                    size = IOUtils.read7bitIntBE(instructionStream);
+                // separated encoded size
+                if (size == 0 && instruction.getIst() != Instruction.TYPE_NO_OP) {
+                    size = IOUtils.readVarIntBE(instructionStream);
                 }
                 switch (instruction.getIst()) {
-                    case NO_OP:
+                    case Instruction.TYPE_NO_OP:
                         break;
-                    case ADD:
+                    case Instruction.TYPE_ADD:
                         targetDataStream.write(addRunData, addRunDataIndex, size);
                         addRunDataIndex += size;
                         break;
-                    case COPY:
+                    case Instruction.TYPE_COPY:
                         int addr = cache.decodeAddress(
                                 targetDataStream.pos() + sourceLen,
                                 instruction.getMode());
@@ -290,8 +299,7 @@ public class VcdiffDecoder {
                             sourceData.seek(addr);
                             IOUtils.copy(sourceData, targetDataStream, size);
                         } else {
-                            // Data is in target data
-                            // Get rid of the offset
+                            // Data is in target data, Get rid of the offset
                             addr -= sourceLen;
                             // Can we just ignore overlap issues?
                             if (addr + size < targetDataStream.pos()) {
@@ -303,7 +311,7 @@ public class VcdiffDecoder {
                             }
                         }
                         break;
-                    case RUN:
+                    case Instruction.TYPE_RUN:
                         byte data = addRunData[addRunDataIndex++];
                         for (int j = 0; j < size; j++) {
                             targetDataStream.write(data);

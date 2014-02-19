@@ -28,6 +28,8 @@ public interface SeekableStream extends Closeable {
 
     void write(byte[] data, int offset, int length) throws IOException;
 
+    void write(byte[] data) throws IOException;
+
     void write(byte b) throws IOException;
 
     int length() throws IOException;

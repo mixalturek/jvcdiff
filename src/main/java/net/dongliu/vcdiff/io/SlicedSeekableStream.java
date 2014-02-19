@@ -12,7 +12,7 @@ public class SlicedSeekableStream implements SeekableStream {
 
     private SeekableStream ss;
     private int sOffset;
-    private int slength;
+    private int sLength;
 
     /**
      * Constructs a new RandomAccessFileSeekableSource.
@@ -23,7 +23,7 @@ public class SlicedSeekableStream implements SeekableStream {
         }
         this.ss = ss;
         this.sOffset = offset;
-        this.slength = length;
+        this.sLength = length;
     }
 
     public void seek(int pos) throws IOException {
@@ -41,7 +41,7 @@ public class SlicedSeekableStream implements SeekableStream {
 
     @Override
     public int length() throws IOException {
-        return this.slength;
+        return this.sLength;
     }
 
     @Override
@@ -55,13 +55,18 @@ public class SlicedSeekableStream implements SeekableStream {
     }
 
     @Override
+    public void write(byte[] data) throws IOException {
+        write(data, 0, data.length);
+    }
+
+    @Override
     public void write(byte b) throws IOException {
         this.ss.write(b);
     }
 
     @Override
     public SeekableStream asReadonly() {
-        return new SlicedSeekableStream(ss.asReadonly(), this.sOffset, this.slength);
+        return new SlicedSeekableStream(ss.asReadonly(), this.sOffset, this.sLength);
     }
 
     @Override

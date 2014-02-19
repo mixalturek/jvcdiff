@@ -1,6 +1,6 @@
-package net.dongliu.vcdiff.codetable;
+package net.dongliu.vcdiff.vc;
 
-import net.dongliu.vcdiff.codetable.Instruction.InstructionType;
+import net.dongliu.vcdiff.utils.U;
 
 /**
  * vcdiff instruction table.
@@ -13,16 +13,18 @@ public class CodeTable {
      * Default code table specified in RFC 3284.
      */
     public static final CodeTable Default = BuildDefaultCodeTable();
+    public static final short CodeTableSize = 256;
 
     /**
      * code table entries.
      */
-    Instruction[][] entries = new Instruction[256][2];
+    Instruction[][] entries;
 
     public CodeTable(byte[] bytes) {
-        for (int i = 0; i < 256; i++) {
-            entries[i][0] = new Instruction(bytes[i], bytes[i + 512], bytes[i + 1024]);
-            entries[i][1] = new Instruction(bytes[i + 256], bytes[i + 768], bytes[i + 1280]);
+        entries = initCodeTableEntries();
+        for (int i = 0; i < CodeTableSize; i++) {
+            entries[i][0] = new Instruction(bytes[i], U.b(bytes[i + 512]), U.b(bytes[i + 1024]));
+            entries[i][1] = new Instruction(bytes[i + 256], U.b(bytes[i + 768]), U.b(bytes[i + 1280]));
         }
     }
 
@@ -69,72 +71,88 @@ public class CodeTable {
      */
     private static CodeTable BuildDefaultCodeTable() {
         // Defaults are NoOps with size and mode 0.
-        Instruction[][] entries = new Instruction[256][2];
+        Instruction[][] entries = initCodeTableEntries();
+
+        for (int i = 0; i < entries.length; i++) {
+            entries[i] = new Instruction[2];
+        }
 
         // Entry 0. RUN instruction
-        entries[0][0] = new Instruction(InstructionType.RUN, (byte) 0, (byte) 0);
-        entries[0][1] = new Instruction(InstructionType.NO_OP, (byte) 0, (byte) 0);
+        entries[0][0] = new Instruction(Instruction.TYPE_RUN, (short) 0, (short) 0);
+        entries[0][1] = new Instruction(Instruction.TYPE_NO_OP, (short) 0, (short) 0);
 
         // Entries 1-18. 18 single ADD instructions
-        for (byte i = 1; i <= 18; i++) {
-            entries[i][0] = new Instruction(InstructionType.ADD, (byte) (i - 1), (byte) 0);
-            entries[i][1] = new Instruction(InstructionType.NO_OP, (byte) 0, (byte) 0);
+        for (short i = 1; i <= 18; i++) {
+            entries[i][0] = new Instruction(Instruction.TYPE_ADD, (short) (i - 1), (short) 0);
+            entries[i][1] = new Instruction(Instruction.TYPE_NO_OP, (short) 0, (short) 0);
         }
 
         int index = 19;
 
         // Entries 19-162. single COPY instructions
-        for (byte mode = 0; mode < 9; mode++) {
-            entries[index][0] = new Instruction(InstructionType.COPY, (byte) 0, mode);
-            entries[index++][1] = new Instruction(InstructionType.NO_OP, (byte) 0, (byte) 0);
-            for (byte size = 4; size <= 18; size++) {
-                entries[index][0] = new Instruction(InstructionType.COPY, size, mode);
-                entries[index++][1] = new Instruction(InstructionType.NO_OP, (byte) 0, (byte) 0);
+        for (short mode = 0; mode < 9; mode++) {
+            entries[index][0] = new Instruction(Instruction.TYPE_COPY, (short) 0, mode);
+            entries[index++][1] = new Instruction(Instruction.TYPE_NO_OP, (short) 0, (short) 0);
+            for (short size = 4; size <= 18; size++) {
+                entries[index][0] = new Instruction(Instruction.TYPE_COPY, size, mode);
+                entries[index++][1] = new Instruction(Instruction.TYPE_NO_OP, (short) 0, (short) 0);
             }
         }
 
         // Entries 163-234
-        for (byte mode = 0; mode <= 5; mode++) {
-            for (byte addSize = 1; addSize <= 4; addSize++) {
-                for (byte copySize = 4; copySize <= 6; copySize++) {
-                    entries[index][0] = new Instruction(InstructionType.ADD, addSize, (byte) 0);
-                    entries[index++][1] = new Instruction(InstructionType.COPY, copySize, mode);
+        for (short mode = 0; mode <= 5; mode++) {
+            for (short addSize = 1; addSize <= 4; addSize++) {
+                for (short copySize = 4; copySize <= 6; copySize++) {
+                    entries[index][0] = new Instruction(Instruction.TYPE_ADD, addSize, (short) 0);
+                    entries[index++][1] = new Instruction(Instruction.TYPE_COPY, copySize, mode);
                 }
             }
         }
 
         // Entries 235-246
-        for (byte mode = 6; mode <= 8; mode++) {
-            for (byte addSize = 1; addSize <= 4; addSize++) {
-                entries[index][0] = new Instruction(InstructionType.ADD, addSize, (byte) 0);
-                entries[index++][1] = new Instruction(InstructionType.COPY, (byte) 4, mode);
+        for (short mode = 6; mode <= 8; mode++) {
+            for (short addSize = 1; addSize <= 4; addSize++) {
+                entries[index][0] = new Instruction(Instruction.TYPE_ADD, addSize, (short) 0);
+                entries[index++][1] = new Instruction(Instruction.TYPE_COPY, (short) 4, mode);
             }
         }
 
         // Entries 247-255
-        for (byte mode = 0; mode <= 8; mode++) {
-            entries[index][0] = new Instruction(InstructionType.COPY, (byte) 4, mode);
-            entries[index++][1] = new Instruction(InstructionType.ADD, (byte) 1, (byte) 0);
+        for (short mode = 0; mode <= 8; mode++) {
+            entries[index][0] = new Instruction(Instruction.TYPE_COPY, (short) 4, mode);
+            entries[index++][1] = new Instruction(Instruction.TYPE_ADD, (short) 1, (short) 0);
         }
 
         return new CodeTable(entries);
     }
 
+    private static Instruction[][] initCodeTableEntries() {
+        Instruction[][] entries = new Instruction[CodeTableSize][2];
+
+        for (int i = 0; i < entries.length; i++) {
+            entries[i] = new Instruction[2];
+        }
+        return entries;
+    }
+
     public byte[] getBytes() {
         byte[] ret = new byte[1536];
-        for (int i = 0; i < 256; i++) {
-            ret[i] = (byte) entries[i][0].getIst().getOp();
-            ret[i + 256] = (byte) entries[i][1].getIst().getOp();
-            ret[i + 512] = entries[i][0].getSize();
-            ret[i + 768] = entries[i][1].getSize();
-            ret[i + 1024] = entries[i][0].getMode();
-            ret[i + 1280] = entries[i][1].getMode();
+        for (int i = 0; i < CodeTableSize; i++) {
+            ret[i] = entries[i][0].getIst();
+            ret[i + 256] = entries[i][1].getIst();
+            ret[i + 512] = (byte) entries[i][0].getSize();
+            ret[i + 768] = (byte) entries[i][1].getSize();
+            ret[i + 1024] = (byte) entries[i][0].getMode();
+            ret[i + 1280] = (byte) entries[i][1].getMode();
         }
         return ret;
     }
 
-    public Instruction get(int instructionIndex, int i) {
-        return entries[instructionIndex][i];
+    /**
+     * get instruction by opcode, and idx(0, 1).
+     */
+    public Instruction get(int opcode, int idx) {
+        return entries[opcode][idx];
     }
 
 }

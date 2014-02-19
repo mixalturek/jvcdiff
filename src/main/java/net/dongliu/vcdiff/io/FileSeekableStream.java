@@ -66,6 +66,11 @@ public class FileSeekableStream implements SeekableStream {
     }
 
     @Override
+    public void write(byte[] data) throws IOException {
+        write(data, 0, data.length);
+    }
+
+    @Override
     public void write(byte b) throws IOException {
         if (readOnly) {
             throw new UnsupportedOperationException();

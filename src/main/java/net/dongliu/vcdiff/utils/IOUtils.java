@@ -1,8 +1,10 @@
-package net.dongliu.vcdiff.io;
+package net.dongliu.vcdiff.utils;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.InputStream;
+import net.dongliu.vcdiff.io.ByteBufferSeekableStream;
+import net.dongliu.vcdiff.io.SeekableStream;
+import net.dongliu.vcdiff.diff.ByteBuf;
+
+import java.io.*;
 
 /**
  * IOUtils form vcdiff.
@@ -26,7 +28,7 @@ public class IOUtils {
             int readSize = is.read(data, offset, size - offset);
             if (readSize < 0) {
                 // end of is
-                throw new IndexOutOfBoundsException("Not enough data in inputstream.");
+                throw new IndexOutOfBoundsException("Not enough data in inputStream.");
             }
             offset += readSize;
         }
@@ -40,12 +42,12 @@ public class IOUtils {
      * @throws IOException
      */
     public static int readByte(SeekableStream ss) throws IOException {
-        int byti = ss.read();
-        if (byti == -1) {
+        int b = ss.read();
+        if (b == -1) {
             // end of is
-            throw new IndexOutOfBoundsException("Not enough data in inputstream.");
+            throw new IndexOutOfBoundsException("Not enough data in inputStream.");
         }
-        return byti;
+        return b;
     }
 
     /**
@@ -54,13 +56,12 @@ public class IOUtils {
      * @return
      * @throws IOException
      */
-    public static int read7bitIntBE(SeekableStream ss) throws IOException {
+    public static int readVarIntBE(SeekableStream ss) throws IOException {
         int ret = 0;
         for (int i = 0; i < 5; i++) {
             int b = ss.read();
             if (b == -1) {
-                throw new IndexOutOfBoundsException(
-                        "Not enough data in inputStream.");
+                throw new IndexOutOfBoundsException("Not enough data in inputStream.");
             }
             ret = (ret << 7) | (b & 0x7f);
             // end of int encoded.
@@ -73,18 +74,17 @@ public class IOUtils {
     }
 
     /**
-     * read 7 bit enconded int.by bigendian.
+     * read 7 bit encoded int.by big endian.
      *
      * @return
      * @throws IOException
      */
-    public static int read7bitIntBE(InputStream is) throws IOException {
+    public static int readVarIntBE(InputStream is) throws IOException {
         int ret = 0;
         for (int i = 0; i < 5; i++) {
             int b = is.read();
             if (b == -1) {
-                throw new IndexOutOfBoundsException(
-                        "Not enough data in inputStream.");
+                throw new IndexOutOfBoundsException("Not enough data in inputStream.");
             }
             ret = (ret << 7) | (b & 0x7f);
             // end of int encoded.
@@ -125,7 +125,8 @@ public class IOUtils {
      * @return
      * @throws IOException
      */
-    public static SeekableStream getStreamView(SeekableStream ss, int length, boolean shareData) throws IOException {
+    public static SeekableStream getStreamView(SeekableStream ss, int length, boolean shareData)
+            throws IOException {
         if (shareData) {
             return ss.slice(length);
         } else {
@@ -182,7 +183,7 @@ public class IOUtils {
         if (ba == null || ba.length < 4 + pos) {
             throw new IllegalArgumentException("Need at lease four bytes.");
         }
-        return makeInt(ba[pos + 0], ba[pos + 1], ba[pos + 2], ba[pos + 3]);
+        return makeInt(ba[pos], ba[pos + 1], ba[pos + 2], ba[pos + 3]);
     }
 
     /**
@@ -203,5 +204,104 @@ public class IOUtils {
             throw new IllegalArgumentException("Need at lease two bytes.");
         }
         return makeShort(ba[pos + 1], ba[pos]);
+    }
+
+    public static boolean ArrayEqual(byte[] a, byte[] b, int size) {
+        for (int i = 0; i < size; i++) {
+            if (a[i] != b[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * write int as var-len int
+     */
+    public static void writeVarIntBE(ByteBuf byteBuf, int i) {
+        boolean flag = false;
+        int shift = 4 * 7;
+        for (int idx = 4; idx >= 0; idx--, shift = shift - 7) {
+            int j = i >>> shift;
+            byte b = (byte) (j & 0x7f);
+            if (b != 0) {
+                if (idx != 0) {
+                    b = (byte) (b ^ 0x80);
+                }
+                byteBuf.push(b);
+                flag = true;
+            } else if (flag) {
+                if (idx != 0) {
+                    b = (byte) 0x80;
+                }
+                byteBuf.push(b);
+            }
+        }
+        if (!flag) {
+            // zero
+            byteBuf.push((byte)0);
+        }
+    }
+
+    public static int varIntLen(int i) {
+        boolean flag = false;
+        int shift = 4 * 7;
+        for (int idx = 4; idx >= 0; idx--, shift = shift - 7) {
+            int j = i >>> shift;
+            byte b = (byte) (j & 0x7f);
+            if (b != 0) {
+                return idx + 1;
+            }
+        }
+        return 1;
+    }
+
+    /**
+     * write int as var-len int
+     */
+    public static void writeVarIntBE(int i, OutputStream out) throws IOException {
+        boolean flag = false;
+        int shift = 4 * 7;
+        for (int idx = 4; idx >= 0; idx--, shift = shift - 7) {
+            int j = i >>> shift;
+            int b = j & 0x7f;
+            if (b != 0) {
+                if (idx != 0) {
+                    b = b ^ 0x80;
+                }
+                out.write(b);
+                flag = true;
+            } else if (flag) {
+                if (idx != 0) {
+                    b = 0x80;
+                }
+                out.write(b);
+            }
+        }
+        if (!flag) {
+            // zero
+            out.write(0);
+        }
+    }
+
+    public static int varLongLength(long checksum_) {
+        //TODO: to be implemented
+        throw new UnsupportedOperationException();
+    }
+
+    public static void writeVarLongBE(OutputStream out, long checksum_) {
+        //TODO: to be implemented
+        throw new UnsupportedOperationException();
+    }
+
+    public static byte[] readAll(InputStream in) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] buffer = new byte[1024 * 4];
+        int n;
+        while ((n = in.read(buffer)) != -1) {
+            out.write(buffer, 0, n);
+        }
+        out.flush();
+        return out.toByteArray();
     }
 }
