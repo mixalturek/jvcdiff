@@ -1,11 +1,13 @@
 package net.dongliu.vcdiff.diff;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.BufferOverflowException;
 
 /**
  * @author dongliu
  */
-public class ByteBuf {
+public class ByteBuf extends OutputStream {
     private byte[] data;
     // the data size current in use.
     private int size;
@@ -124,5 +126,21 @@ public class ByteBuf {
     public ByteBuf clear() {
         this.size = 0;
         return this;
+    }
+
+    // methods for implement output stream
+    @Override
+    public void write(int b) throws IOException {
+        push((byte) b);
+    }
+
+    @Override
+    public void write(byte bytes[]) throws IOException {
+        push(bytes);
+    }
+
+    @Override
+    public void close() throws IOException {
+        clear();
     }
 }

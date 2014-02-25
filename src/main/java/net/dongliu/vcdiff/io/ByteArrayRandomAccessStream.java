@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
  *
  * @author dongliu
  */
-public class ByteBufferSeekableStream implements SeekableStream {
+public class ByteArrayRandomAccessStream implements RandomAccessStream {
 
     private ByteBuffer buffer;
 
@@ -18,19 +18,19 @@ public class ByteBufferSeekableStream implements SeekableStream {
     /**
      * Constructs a new ByteArraySeekableSource.
      */
-    public ByteBufferSeekableStream(byte[] source) {
+    public ByteArrayRandomAccessStream(byte[] source) {
         this(source, false);
     }
 
     /**
      * Constructs a new ByteArraySeekableSource.
      */
-    public ByteBufferSeekableStream(byte[] source, boolean readOnly) {
+    public ByteArrayRandomAccessStream(byte[] source, boolean readOnly) {
         this.buffer = ByteBuffer.wrap(source);
         this.readOnly = readOnly;
     }
 
-    public ByteBufferSeekableStream(ByteBuffer bytebuffer) {
+    public ByteArrayRandomAccessStream(ByteBuffer bytebuffer) {
         this.buffer = bytebuffer;
         this.readOnly = bytebuffer.isReadOnly();
     }
@@ -99,11 +99,6 @@ public class ByteBufferSeekableStream implements SeekableStream {
     }
 
     @Override
-    public SeekableStream asReadonly() {
-        return new ByteBufferSeekableStream(this.buffer.asReadOnlyBuffer());
-    }
-
-    @Override
     public boolean isReadOnly() {
         return this.readOnly;
     }
@@ -118,7 +113,7 @@ public class ByteBufferSeekableStream implements SeekableStream {
     }
 
     @Override
-    public SeekableStream slice(int offset) {
+    public RandomAccessStream slice(int offset) {
         if (offset > this.buffer.remaining()) {
             throw new BufferUnderflowException();
         }
@@ -127,6 +122,6 @@ public class ByteBufferSeekableStream implements SeekableStream {
         ByteBuffer newBuffer = this.buffer.slice();
         this.buffer.limit(limit);
         this.buffer.position(this.buffer.position() + offset);
-        return new ByteBufferSeekableStream(newBuffer);
+        return new ByteArrayRandomAccessStream(newBuffer);
     }
 }

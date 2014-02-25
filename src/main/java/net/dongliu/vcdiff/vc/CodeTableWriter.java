@@ -2,6 +2,8 @@ package net.dongliu.vcdiff.vc;
 
 import net.dongliu.vcdiff.diff.ByteBuf;
 import net.dongliu.vcdiff.diff.Pointer;
+import net.dongliu.vcdiff.exception.VcdiffDecodeException;
+import net.dongliu.vcdiff.exception.VcdiffEncodeException;
 import net.dongliu.vcdiff.utils.IOUtils;
 import net.dongliu.vcdiff.utils.U;
 
@@ -9,7 +11,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 /**
- * write the instruction into patch file.
+ * write the instruction into decode file.
  *
  * @author dongliu
  */
@@ -142,14 +144,15 @@ public class CodeTableWriter {
      * @param inst
      * @param size
      */
-    public void encodeInstruction(byte inst, int size) {
+    public void encodeInstruction(byte inst, int size) throws IOException, VcdiffEncodeException {
         encodeInstruction(inst, size, (short) 0);
     }
 
     /**
      * the size may be larger than 255.
      */
-    private void encodeInstruction(byte ist, int size, short mode) {
+    private void encodeInstruction(byte ist, int size, short mode)
+            throws IOException, VcdiffEncodeException {
         if (lastOpcodeIndex >= 0) {
             // try to combine the last instruction and this instruction
             short lastOpcode = U.b(instructions.get(lastOpcodeIndex));
@@ -169,7 +172,7 @@ public class CodeTableWriter {
             if (compoundOpcode != -1) {
                 instructions.set(lastOpcodeIndex, compoundOpcode);
                 lastOpcodeIndex = -1;
-                writeVarInt(size, instructions);
+                IOUtils.writeVarIntBE(size, instructions);
                 return;
             }
         }
@@ -185,34 +188,35 @@ public class CodeTableWriter {
         // There should always be an opcode with size 0.
         opcode = instructionMap.lookupSingleOpcode(new Instruction(ist, (short) 0, mode));
         if (opcode == -1) {
-            throw new RuntimeException("No matching opcode found for inst:" + ist + ", size:" + size
-                    + ", mode:" + mode);
+            throw new VcdiffEncodeException("No matching opcode found for inst:" + ist
+                    + ", size:" + size + ", mode:" + mode);
         }
         instructions.push(opcode);
         lastOpcodeIndex = instructions.size() - 1;
-        writeVarInt(size, instructions);
+        IOUtils.writeVarIntBE(size, instructions);
     }
 
-    public void add(Pointer data, int size) {
+    public void add(Pointer data, int size) throws IOException, VcdiffEncodeException {
         encodeInstruction(Instruction.TYPE_ADD, size);
         this.data.push(data, size);
         targetLength += size;
     }
 
-    public void copy(int offset, int size) {
+    public void copy(int offset, int size)
+            throws IOException, VcdiffEncodeException {
         int[] encodedAddress = new int[1];
         short mode = addressCache.encodeAddress(offset, sourceSegSize + targetLength,
                 encodedAddress);
         encodeInstruction(Instruction.TYPE_COPY, size, mode);
         if (addressCache.writeAddressAsVarIntForMode(mode)) {
-            IOUtils.writeVarIntBE(addresses, encodedAddress[0]);
+            IOUtils.writeVarIntBE(encodedAddress[0], addresses);
         } else {
             addresses.push((short) encodedAddress[0]);
         }
         targetLength += size;
     }
 
-    public void run(int size, byte b) {
+    public void run(int size, byte b) throws IOException, VcdiffEncodeException {
         encodeInstruction(Instruction.TYPE_RUN, size);
         data.push(b);
         targetLength += size;
@@ -285,10 +289,6 @@ public class CodeTableWriter {
             length_of_the_delta_encoding += IOUtils.varLongLength(checksum);
         }
         return length_of_the_delta_encoding;
-    }
-
-    private void writeVarInt(int size, ByteBuf byteBuf) {
-        IOUtils.writeVarIntBE(byteBuf, size);
     }
 
     public void addChecksum(long checksum) {

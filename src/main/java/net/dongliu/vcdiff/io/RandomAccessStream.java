@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
  *
  * @author dongliu
  */
-public interface SeekableStream extends Closeable {
+public interface RandomAccessStream extends Closeable {
 
     /**
      * Sets the position for the next {@link #read(ByteBuffer)}.
@@ -35,13 +35,6 @@ public interface SeekableStream extends Closeable {
     int length() throws IOException;
 
     /**
-     * get a readonly view from origin stream.
-     *
-     * @return
-     */
-    SeekableStream asReadonly();
-
-    /**
      * get a readonly stream, share data with origin stream.
      * the new data range: [pos, pos+offset).
      * side effect: pos += offset.
@@ -49,7 +42,7 @@ public interface SeekableStream extends Closeable {
      * @return
      * @throws IOException
      */
-    SeekableStream slice(int length) throws IOException;
+    RandomAccessStream slice(int length) throws IOException;
 
     /**
      * is readOnly?

@@ -1,5 +1,7 @@
 package net.dongliu.vcdiff.diff;
 
+import net.dongliu.vcdiff.exception.VcdiffEncodeException;
+
 import java.util.Arrays;
 
 /**
@@ -61,7 +63,7 @@ public class BlockHash {
         this.lastBlockAdded = -1;
     }
 
-    public void init(boolean populateHashTable) {
+    public void init(boolean populateHashTable) throws VcdiffEncodeException {
         int tableSize = calcTableSize(this.sourceSize);
         // Since table_size is a power of 2, (table_size - 1) is a bit mask
         // containing all the bits below table_size.
@@ -81,19 +83,21 @@ public class BlockHash {
         return sourceSize / K_BLOCK_SIZE;
     }
 
-    public static BlockHash createDictionaryHash(Pointer dictionaryData, int dictionarySize) {
+    public static BlockHash createDictionaryHash(Pointer dictionaryData, int dictionarySize)
+            throws VcdiffEncodeException {
         BlockHash newDictionaryHash = new BlockHash(dictionaryData, dictionarySize, 0);
         newDictionaryHash.init(true);
         return newDictionaryHash;
     }
 
-    public static BlockHash createTargetHash(Pointer targetData, int targetSize, int dictionarySize) {
+    public static BlockHash createTargetHash(Pointer targetData, int targetSize, int dictionarySize)
+            throws VcdiffEncodeException {
         BlockHash newTargetHash = new BlockHash(targetData, targetSize, dictionarySize);
         newTargetHash.init(false);
         return newTargetHash;
     }
 
-    private int calcTableSize(int dictionarySize) {
+    private int calcTableSize(int dictionarySize) throws VcdiffEncodeException {
         // Overallocate the hash table by making it the same size (in bytes) as the source data.
         int intSize = 4;
         int minSize = (dictionarySize / intSize) + 1;
@@ -104,7 +108,7 @@ public class BlockHash {
             tableSize <<= 1;
             // Guard against an infinite loop
             if (tableSize <= 0) {
-                throw new RuntimeException("too large data size:" + dictionarySize);
+                throw new VcdiffEncodeException("too large data size:" + dictionarySize);
             }
         }
         return tableSize;
@@ -114,15 +118,15 @@ public class BlockHash {
      * If the hash value is already available from the rolling hash,
      * call this function to save time.
      */
-    public void addBlock(int hashValue) {
+    public void addBlock(int hashValue) throws VcdiffEncodeException {
         // The initial value of last_block_added_ is -1.
         int blockNumber = lastBlockAdded + 1;
         int totalBlocks = sourceSize / K_BLOCK_SIZE;  // round down
         if (blockNumber >= totalBlocks) {
-            throw new RuntimeException("larger or equal than total block num:" + blockNumber);
+            throw new VcdiffEncodeException("larger or equal than total block num:" + blockNumber);
         }
         if (nextBlockTable[blockNumber] != -1) {
-            throw new RuntimeException("next block should be -1, but:" + nextBlockTable[blockNumber]);
+            throw new VcdiffEncodeException("next block should be -1, but:" + nextBlockTable[blockNumber]);
         }
         int hashTableIndex = getHashTableIndex(hashValue);
         int firstMatchingBlock = hashTable[hashTableIndex];
@@ -134,7 +138,7 @@ public class BlockHash {
             // Add this entry at the end of the chain of matching blocks
             int lastMatchingBlock = lastBlockTable[firstMatchingBlock];
             if (nextBlockTable[lastMatchingBlock] != -1) {
-                throw new RuntimeException("next block should be -1, but:" + nextBlockTable[lastMatchingBlock]);
+                throw new VcdiffEncodeException("next block should be -1, but:" + nextBlockTable[lastMatchingBlock]);
             }
             nextBlockTable[lastMatchingBlock] = blockNumber;
             lastBlockTable[firstMatchingBlock] = blockNumber;
@@ -146,7 +150,7 @@ public class BlockHash {
         return hashValue & hashTableMask;
     }
 
-    public void addAllBlocks() {
+    public void addAllBlocks() throws VcdiffEncodeException {
         addAllBlocksThroughIndex(sourceSize);
     }
 
@@ -155,14 +159,14 @@ public class BlockHash {
      *
      * @param endIndex
      */
-    public void addAllBlocksThroughIndex(int endIndex) {
+    public void addAllBlocksThroughIndex(int endIndex) throws VcdiffEncodeException {
         if (endIndex > sourceSize) {
             throw new ArrayIndexOutOfBoundsException("exceed data size:" + endIndex);
         }
 
         int lastIndexAdded = lastBlockAdded * K_BLOCK_SIZE;
         if (endIndex <= lastIndexAdded) {
-            throw new RuntimeException("must be larger than last added, which is:" + lastIndexAdded);
+            throw new VcdiffEncodeException("must be larger than last added, which is:" + lastIndexAdded);
         }
         int endLimit = endIndex;
 
@@ -206,9 +210,9 @@ public class BlockHash {
         return skipNonMatchingBlocks(hashTable[hash], block);
     }
 
-    private int nextMatchingBlock(int blockNumber, Pointer block) {
+    private int nextMatchingBlock(int blockNumber, Pointer block) throws VcdiffEncodeException {
         if (blockNumber >= numberOfBlocks()) {
-            throw new RuntimeException("block number larger than block counts:" + blockNumber);
+            throw new VcdiffEncodeException("block number larger than block counts:" + blockNumber);
         }
         return skipNonMatchingBlocks(nextBlockTable[blockNumber], block);
     }
@@ -249,7 +253,7 @@ public class BlockHash {
     }
 
     public void findBestMatch(int hashValue, Pointer targetCandidate, Pointer target, int targetSize,
-                              Match bestMatch) {
+                              Match bestMatch) throws VcdiffEncodeException {
         int matchCounter = 0;
         for (int blockNumber = firstMatchingBlock(hashValue, targetCandidate);
              (blockNumber >= 0) && ++matchCounter < kMaxMatchesToCheck;
@@ -283,7 +287,7 @@ public class BlockHash {
         }
     }
 
-    public void addOneIndexHash(int index, int hashValue) {
+    public void addOneIndexHash(int index, int hashValue) throws VcdiffEncodeException {
         if (index == nextIndexToAdd()) {
             addBlock(hashValue);
         }

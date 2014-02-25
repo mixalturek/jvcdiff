@@ -11,7 +11,7 @@ import java.nio.channels.FileChannel;
  *
  * @author dongliu
  */
-public class FileSeekableStream implements SeekableStream {
+public class FileRandomAccessStream implements RandomAccessStream {
 
     private final boolean readOnly;
     private final RandomAccessFile raf;
@@ -22,11 +22,12 @@ public class FileSeekableStream implements SeekableStream {
      * @param file
      * @throws FileNotFoundException
      */
-    public FileSeekableStream(RandomAccessFile file) throws FileNotFoundException {
+    public FileRandomAccessStream(RandomAccessFile file) throws FileNotFoundException {
         this(file, false);
     }
 
-    public FileSeekableStream(RandomAccessFile file, boolean readOnly) throws FileNotFoundException {
+    public FileRandomAccessStream(RandomAccessFile file, boolean readOnly)
+            throws FileNotFoundException {
         if (file == null) {
             throw new NullPointerException();
         }
@@ -79,16 +80,6 @@ public class FileSeekableStream implements SeekableStream {
     }
 
     @Override
-    public SeekableStream asReadonly() {
-        try {
-            return new FileSeekableStream(this.raf, true);
-        } catch (FileNotFoundException ignore) {
-            // should never happen.
-            return this;
-        }
-    }
-
-    @Override
     public boolean isReadOnly() {
         return this.readOnly;
     }
@@ -99,14 +90,14 @@ public class FileSeekableStream implements SeekableStream {
     }
 
     @Override
-    public SeekableStream slice(int length) throws IOException {
+    public RandomAccessStream slice(int length) throws IOException {
         // use byteBuffer to slice.
         // this strategy is SPECIALLY for jVcdiff use.
         FileChannel fc = this.raf.getChannel();
         MappedByteBuffer buffer = fc.map(FileChannel.MapMode.READ_ONLY,
                 this.raf.getFilePointer(), length);
         this.raf.seek(this.raf.getFilePointer() + length);
-        return new ByteBufferSeekableStream(buffer);
+        return new ByteArrayRandomAccessStream(buffer);
     }
 
 

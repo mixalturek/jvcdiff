@@ -2,8 +2,10 @@ package net.dongliu.vcdiff;
 
 import net.dongliu.vcdiff.diff.Pointer;
 import net.dongliu.vcdiff.diff.VcdiffEngine;
-import net.dongliu.vcdiff.vc.CodeTableWriter;
+import net.dongliu.vcdiff.exception.VcdiffDecodeException;
+import net.dongliu.vcdiff.exception.VcdiffEncodeException;
 import net.dongliu.vcdiff.utils.IOUtils;
+import net.dongliu.vcdiff.vc.CodeTableWriter;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -42,31 +44,47 @@ public class VcdiffEncoder {
         coder = new CodeTableWriter();
     }
 
-    private long computeAdler32(byte[] data, int len) {
-        //TODO: add check sum
-        return 0;
+    /**
+     * Convenient method for encode decode file, use default setting and code tables.
+     *
+     * @param sourceFile
+     * @param targetFile
+     * @param patchFile
+     * @throws IOException
+     */
+    public static void encode(File sourceFile, File targetFile, File patchFile)
+            throws IOException, VcdiffEncodeException {
+        VcdiffEncoder encoder = new VcdiffEncoder(sourceFile, targetFile, patchFile);
+        encoder.encode();
     }
 
-    public void encode() throws IOException {
+    public void encode() throws IOException, VcdiffEncodeException {
         byte[] sourceData = IOUtils.readAll(new FileInputStream(source));
         VcdiffEngine engine = new VcdiffEngine(new Pointer(sourceData), sourceData.length);
         engine.init();
         FileInputStream targetStream = new FileInputStream(target);
-        FileOutputStream diffStream = new FileOutputStream(diff);
+        try {
+            FileOutputStream diffStream = new FileOutputStream(diff);
+            try {
+                coder.init(engine.getSourceSize());
+                coder.writeHeader(diffStream);
 
-        coder.init(engine.getSourceSize());
-        coder.writeHeader(diffStream);
-
-        byte[] window = new byte[windowSize];
-        int len;
-        while ((len = targetStream.read(window)) > 0) {
-            if (addChecksum) {
-                coder.addChecksum(computeAdler32(window, len));
+                byte[] window = new byte[windowSize];
+                int len;
+                while ((len = targetStream.read(window)) > 0) {
+                    if (addChecksum) {
+                        coder.addChecksum(computeAdler32(window, len));
+                    }
+                    engine.encode(window, len, lookForTargetMatches, diffStream, coder);
+                }
+                diffStream.flush();
+            } finally {
+                diffStream.close();
             }
-            engine.encode(window, len, lookForTargetMatches, diffStream, coder);
+        } finally {
+            targetStream.close();
         }
-        diffStream.flush();
-        diffStream.close();
+
     }
 
     public void setAddChecksum(boolean addChecksum) {
@@ -83,5 +101,10 @@ public class VcdiffEncoder {
 
     public void setWindowSize(int windowSize) {
         this.windowSize = windowSize;
+    }
+
+    private long computeAdler32(byte[] data, int len) {
+        //TODO: add check sum
+        return 0;
     }
 }

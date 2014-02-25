@@ -1,9 +1,8 @@
 package net.dongliu.vcdiff.vc;
 
-import net.dongliu.vcdiff.io.ByteBufferSeekableStream;
-import net.dongliu.vcdiff.io.SeekableStream;
+import net.dongliu.vcdiff.io.ByteArrayRandomAccessStream;
+import net.dongliu.vcdiff.io.RandomAccessStream;
 import net.dongliu.vcdiff.utils.IOUtils;
-import net.dongliu.vcdiff.vc.Vcdiff;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -38,7 +37,7 @@ public class AddressCache {
      */
     private int[] same;
 
-    private SeekableStream addressStream;
+    private RandomAccessStream addressStream;
 
     public AddressCache() {
         this(defaultNearSize, defaultSameSize);
@@ -56,7 +55,7 @@ public class AddressCache {
         Arrays.fill(near, 0);
         Arrays.fill(same, 0);
 
-        addressStream = new ByteBufferSeekableStream(addresses, true);
+        addressStream = new ByteArrayRandomAccessStream(addresses, true);
     }
 
     /**

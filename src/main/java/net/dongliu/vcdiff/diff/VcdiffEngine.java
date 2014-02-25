@@ -1,5 +1,6 @@
 package net.dongliu.vcdiff.diff;
 
+import net.dongliu.vcdiff.exception.VcdiffEncodeException;
 import net.dongliu.vcdiff.vc.CodeTableWriter;
 
 import java.io.IOException;
@@ -26,7 +27,7 @@ public class VcdiffEngine {
         this.blockHash = null;
     }
 
-    public void init() {
+    public void init() throws VcdiffEncodeException {
         this.blockHash = BlockHash.createDictionaryHash(this.sourcePointer, sourceSize);
     }
 
@@ -41,7 +42,8 @@ public class VcdiffEngine {
      * @throws IOException
      */
     public void encode(byte[] targetData, int targetSize, boolean lookForTargetMatches,
-                       OutputStream diff, CodeTableWriter coder) throws IOException {
+                       OutputStream diff, CodeTableWriter coder)
+            throws IOException, VcdiffEncodeException {
         // Do nothing for empty target
         if (targetSize == 0) {
             return;
@@ -117,7 +119,8 @@ public class VcdiffEngine {
     private int encodeCopyForBestMatch(int hashValue, Pointer targetCandidate,
                                        Pointer unencodedTarget, int unencodedTargetSize,
                                        BlockHash targetLockHash,
-                                       boolean lookForTargetMatches, CodeTableWriter coder) {
+                                       boolean lookForTargetMatches, CodeTableWriter coder)
+            throws IOException, VcdiffEncodeException {
         BlockHash.Match bestMatch = new BlockHash.Match();
 
         blockHash.findBestMatch(hashValue, targetCandidate, unencodedTarget,
@@ -146,16 +149,17 @@ public class VcdiffEngine {
      * if any, through the end of the target data.
      */
     private void addUnmatchedRemainder(Pointer unencodedTargetStart, int unencodedTargetSize,
-                                       CodeTableWriter coder) {
+                                       CodeTableWriter coder)
+            throws IOException, VcdiffEncodeException {
         if (unencodedTargetSize > 0) {
             coder.add(unencodedTargetStart, unencodedTargetSize);
         }
     }
 
     private void finishEncoding(int targetSize, OutputStream diff, CodeTableWriter coder)
-            throws IOException {
+            throws IOException, VcdiffEncodeException {
         if (targetSize != coder.targetLength()) {
-            throw new RuntimeException("target size " + targetSize +
+            throw new VcdiffEncodeException("target size " + targetSize +
                     " does not match number of bytes processed:" + coder.targetLength());
         }
         coder.output(diff);

@@ -1,14 +1,14 @@
 package net.dongliu.vcdiff;
 
 import net.dongliu.vcdiff.exception.VcdiffDecodeException;
-import net.dongliu.vcdiff.io.ByteBufferSeekableStream;
-import net.dongliu.vcdiff.io.FileSeekableStream;
-import net.dongliu.vcdiff.io.SeekableStream;
+import net.dongliu.vcdiff.io.ByteArrayRandomAccessStream;
+import net.dongliu.vcdiff.io.FileRandomAccessStream;
+import net.dongliu.vcdiff.io.RandomAccessStream;
+import net.dongliu.vcdiff.utils.IOUtils;
 import net.dongliu.vcdiff.vc.AddressCache;
 import net.dongliu.vcdiff.vc.CodeTable;
 import net.dongliu.vcdiff.vc.Instruction;
 import net.dongliu.vcdiff.vc.Vcdiff;
-import net.dongliu.vcdiff.utils.IOUtils;
 
 import java.io.*;
 
@@ -19,11 +19,11 @@ import java.io.*;
  */
 public class VcdiffDecoder {
 
-    private SeekableStream sourceStream;
+    private RandomAccessStream sourceStream;
 
     private InputStream patchStream;
 
-    private SeekableStream targetStream;
+    private RandomAccessStream targetStream;
 
     /**
      * code table
@@ -32,8 +32,8 @@ public class VcdiffDecoder {
 
     private AddressCache cache = new AddressCache(4, 3);
 
-    public VcdiffDecoder(SeekableStream sourceStream, InputStream patchStream,
-                         SeekableStream targetStream) {
+    public VcdiffDecoder(RandomAccessStream sourceStream, InputStream patchStream,
+                         RandomAccessStream targetStream) {
         this.sourceStream = sourceStream;
         this.patchStream = patchStream;
         this.targetStream = targetStream;
@@ -41,20 +41,19 @@ public class VcdiffDecoder {
 
 
     /**
-     * Convenient static method for caller.Apply vcdiff patch file to originFile.
+     * Convenient static method for caller.Apply vcdiff decode file to originFile.
      *
      * @param sourceFile the old file.
-     * @param patchFile  the patch file.
-     * @param targetFile the patch result file.
+     * @param patchFile  the decode file.
+     * @param targetFile the decode result file.
      * @throws IOException
      * @throws net.dongliu.vcdiff.exception.VcdiffDecodeException
      */
-    public static void patch(RandomAccessFile sourceFile, File patchFile,
-                             RandomAccessFile targetFile)
+    public static void decode(File sourceFile, File patchFile, File targetFile)
             throws IOException, VcdiffDecodeException {
-        SeekableStream sourceStream = new FileSeekableStream(sourceFile, true);
+        RandomAccessStream sourceStream = new FileRandomAccessStream(new RandomAccessFile(sourceFile, "r"), true);
         InputStream patchStream = new FileInputStream(patchFile);
-        SeekableStream targetStream = new FileSeekableStream(targetFile);
+        RandomAccessStream targetStream = new FileRandomAccessStream(new RandomAccessFile(targetFile, "rw"));
         try {
             decode(sourceStream, patchStream, targetStream);
         } finally {
@@ -66,16 +65,16 @@ public class VcdiffDecoder {
     }
 
     /**
-     * Convenient static method for caller.Apply vcdiff patch file to originFile.
+     * Convenient static method for caller.Apply vcdiff decode file to originFile.
      *
      * @param sourceStream the inputStream of source file.
-     * @param patchStream  the patch file stream, should be seekable.
+     * @param patchStream  the decode file stream, should be seekable.
      * @param targetStream the output stream of output file.
      * @throws IOException
      * @throws net.dongliu.vcdiff.exception.VcdiffDecodeException
      */
-    public static void decode(SeekableStream sourceStream, InputStream patchStream,
-                              SeekableStream targetStream)
+    public static void decode(RandomAccessStream sourceStream, InputStream patchStream,
+                              RandomAccessStream targetStream)
             throws IOException, VcdiffDecodeException {
         VcdiffDecoder decoder = new VcdiffDecoder(sourceStream, patchStream, targetStream);
         decoder.decode();
@@ -147,10 +146,10 @@ public class VcdiffDecoder {
 
         byte[] defaultTableData = CodeTable.Default.getBytes();
 
-        SeekableStream tableOriginal = new ByteBufferSeekableStream(defaultTableData, true);
+        RandomAccessStream tableOriginal = new ByteArrayRandomAccessStream(defaultTableData, true);
         InputStream tableDelta = new ByteArrayInputStream(compressedTableData);
         byte[] decompressedTableData = new byte[1536];
-        SeekableStream tableOutput = new ByteBufferSeekableStream(decompressedTableData);
+        RandomAccessStream tableOutput = new ByteArrayRandomAccessStream(decompressedTableData);
         VcdiffDecoder.decode(tableOriginal, tableDelta, tableOutput);
         if (tableOutput.pos() != 1536) {
             throw new VcdiffDecodeException("Compressed code table was incorrect size");
@@ -168,7 +167,7 @@ public class VcdiffDecoder {
             return false;
         }
 
-        SeekableStream sourceStream;
+        RandomAccessStream sourceStream;
 
         int tempTargetStreamPos = -1;
 
@@ -203,7 +202,7 @@ public class VcdiffDecoder {
         }
 
         // Read the source data, if any
-        SeekableStream sourceData = null;
+        RandomAccessStream sourceData = null;
         int sourceLen = 0;
         // xdelta 有时生成的diff，sourceLen会大于实际可用的大小.
         int realSourceLen = 0;
@@ -219,7 +218,7 @@ public class VcdiffDecoder {
                 realSourceLen = sourceStream.length() - sourcePos;
             }
 
-            sourceData = IOUtils.getStreamView(sourceStream, realSourceLen, false);
+            sourceData = IOUtils.slice(sourceStream, realSourceLen, false);
 
             // restore the position the source stream if appropriate
             if (tempTargetStreamPos != -1) {
@@ -241,7 +240,7 @@ public class VcdiffDecoder {
         }
 
         byte[] targetData = new byte[targetLen];
-        SeekableStream targetDataStream = new ByteBufferSeekableStream(targetData);
+        RandomAccessStream targetDataStream = new ByteArrayRandomAccessStream(targetData);
 
         // Length of data for ADDs and RUNs
         int addRunDataLen = IOUtils.readVarIntBE(patchStream);
@@ -267,7 +266,7 @@ public class VcdiffDecoder {
         // Addresses section for COPYs
         byte[] addresses = IOUtils.readBytes(patchStream, addressesLen);
 
-        SeekableStream instructionStream = new ByteBufferSeekableStream(instructions, true);
+        RandomAccessStream instructionStream = new ByteArrayRandomAccessStream(instructions, true);
 
         cache.reset(addresses);
 

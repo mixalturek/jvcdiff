@@ -1,8 +1,7 @@
 package net.dongliu.vcdiff.utils;
 
-import net.dongliu.vcdiff.io.ByteBufferSeekableStream;
-import net.dongliu.vcdiff.io.SeekableStream;
-import net.dongliu.vcdiff.diff.ByteBuf;
+import net.dongliu.vcdiff.io.ByteArrayRandomAccessStream;
+import net.dongliu.vcdiff.io.RandomAccessStream;
 
 import java.io.*;
 
@@ -36,77 +35,17 @@ public class IOUtils {
     }
 
     /**
-     * read one byte from input stream.
-     *
-     * @return
-     * @throws IOException
-     */
-    public static int readByte(SeekableStream ss) throws IOException {
-        int b = ss.read();
-        if (b == -1) {
-            // end of is
-            throw new IndexOutOfBoundsException("Not enough data in inputStream.");
-        }
-        return b;
-    }
-
-    /**
-     * read 7 bit encoded int.by big endian.
-     *
-     * @return
-     * @throws IOException
-     */
-    public static int readVarIntBE(SeekableStream ss) throws IOException {
-        int ret = 0;
-        for (int i = 0; i < 5; i++) {
-            int b = ss.read();
-            if (b == -1) {
-                throw new IndexOutOfBoundsException("Not enough data in inputStream.");
-            }
-            ret = (ret << 7) | (b & 0x7f);
-            // end of int encoded.
-            if ((b & 0x80) == 0) {
-                return ret;
-            }
-        }
-        // Still haven't seen a byte with the high bit unset? Dodgy data.
-        throw new IOException("Invalid 7-bit encoded integer in stream.");
-    }
-
-    /**
-     * read 7 bit encoded int.by big endian.
-     *
-     * @return
-     * @throws IOException
-     */
-    public static int readVarIntBE(InputStream is) throws IOException {
-        int ret = 0;
-        for (int i = 0; i < 5; i++) {
-            int b = is.read();
-            if (b == -1) {
-                throw new IndexOutOfBoundsException("Not enough data in inputStream.");
-            }
-            ret = (ret << 7) | (b & 0x7f);
-            // end of int encoded.
-            if ((b & 0x80) == 0) {
-                return ret;
-            }
-        }
-        // Still haven't seen a byte with the high bit unset? Dodgy data.
-        throw new IOException("Invalid 7-bit encoded integer in stream.");
-    }
-
-    /**
-     * @param source
+     * @param randomAccessStream
      * @param size
      * @return
      * @throws IOException
      */
-    public static byte[] readBytes(SeekableStream source, int size) throws IOException {
+    public static byte[] readBytes(RandomAccessStream randomAccessStream, int size)
+            throws IOException {
         byte[] data = new byte[size];
         int offset = 0;
         while (offset < size) {
-            int readSize = source.read(data, offset, size - offset);
+            int readSize = randomAccessStream.read(data, offset, size - offset);
             if (readSize < 0) {
                 // end of is
                 throw new IndexOutOfBoundsException(
@@ -121,18 +60,35 @@ public class IOUtils {
      * 从stream中获得一个指定大小为length，从当前pos处开始的stream.
      * 副作用：ss的position会增加length.
      *
-     * @param ss
+     * @param randomAccessStream
      * @return
      * @throws IOException
      */
-    public static SeekableStream getStreamView(SeekableStream ss, int length, boolean shareData)
+    public static RandomAccessStream slice(RandomAccessStream randomAccessStream,
+                                           int length, boolean shareData)
             throws IOException {
         if (shareData) {
-            return ss.slice(length);
+            return randomAccessStream.slice(length);
         } else {
-            byte[] bytes = readBytes(ss, length);
-            return new ByteBufferSeekableStream(bytes, true);
+            byte[] bytes = readBytes(randomAccessStream, length);
+            return new ByteArrayRandomAccessStream(bytes, true);
         }
+    }
+
+
+    /**
+     * copy bytes
+     *
+     * @param sourceStream
+     * @param targetDataStream
+     * @param size
+     * @throws IOException
+     */
+    public static void copy(RandomAccessStream sourceStream, RandomAccessStream targetDataStream,
+                            int size)
+            throws IOException {
+        byte[] bytes = readBytes(sourceStream, size);
+        targetDataStream.write(bytes, 0, bytes.length);
     }
 
     /**
@@ -148,12 +104,6 @@ public class IOUtils {
             closeable.close();
         } catch (IOException ignore) {
         }
-    }
-
-    public static void copy(SeekableStream sourceStream, SeekableStream targetDataStream, int size)
-            throws IOException {
-        byte[] bytes = readBytes(sourceStream, size);
-        targetDataStream.write(bytes, 0, bytes.length);
     }
 
     /**
@@ -215,32 +165,66 @@ public class IOUtils {
         return true;
     }
 
+
     /**
-     * write int as var-len int
+     * read one byte from input stream.
+     *
+     * @return
+     * @throws IOException
      */
-    public static void writeVarIntBE(ByteBuf byteBuf, int i) {
-        boolean flag = false;
-        int shift = 4 * 7;
-        for (int idx = 4; idx >= 0; idx--, shift = shift - 7) {
-            int j = i >>> shift;
-            byte b = (byte) (j & 0x7f);
-            if (b != 0) {
-                if (idx != 0) {
-                    b = (byte) (b ^ 0x80);
-                }
-                byteBuf.push(b);
-                flag = true;
-            } else if (flag) {
-                if (idx != 0) {
-                    b = (byte) 0x80;
-                }
-                byteBuf.push(b);
+    public static int readByte(RandomAccessStream randomAccessStream) throws IOException {
+        int b = randomAccessStream.read();
+        if (b == -1) {
+            // end of is
+            throw new IndexOutOfBoundsException("Not enough data in inputStream.");
+        }
+        return b;
+    }
+
+    /**
+     * read 7 bit encoded int.by big endian.
+     *
+     * @return
+     * @throws IOException
+     */
+    public static int readVarIntBE(RandomAccessStream randomAccessStream) throws IOException {
+        int ret = 0;
+        for (int i = 0; i < 5; i++) {
+            int b = randomAccessStream.read();
+            if (b == -1) {
+                throw new IndexOutOfBoundsException("Not enough data in inputStream.");
+            }
+            ret = (ret << 7) | (b & 0x7f);
+            // end of int encoded.
+            if ((b & 0x80) == 0) {
+                return ret;
             }
         }
-        if (!flag) {
-            // zero
-            byteBuf.push((byte)0);
+        // Still haven't seen a byte with the high bit unset? Dodgy data.
+        throw new IOException("Invalid 7-bit encoded integer in stream.");
+    }
+
+    /**
+     * read 7 bit encoded int.by big endian.
+     *
+     * @return
+     * @throws IOException
+     */
+    public static int readVarIntBE(InputStream is) throws IOException {
+        int ret = 0;
+        for (int i = 0; i < 5; i++) {
+            int b = is.read();
+            if (b == -1) {
+                throw new IndexOutOfBoundsException("Not enough data in inputStream.");
+            }
+            ret = (ret << 7) | (b & 0x7f);
+            // end of int encoded.
+            if ((b & 0x80) == 0) {
+                return ret;
+            }
         }
+        // Still haven't seen a byte with the high bit unset? Dodgy data.
+        throw new IOException("Invalid 7-bit encoded integer in stream.");
     }
 
     public static int varIntLen(int i) {
@@ -284,11 +268,13 @@ public class IOUtils {
         }
     }
 
+    // for checksum encode
     public static int varLongLength(long checksum_) {
         //TODO: to be implemented
         throw new UnsupportedOperationException();
     }
 
+    // for checksum encode
     public static void writeVarLongBE(OutputStream out, long checksum_) {
         //TODO: to be implemented
         throw new UnsupportedOperationException();

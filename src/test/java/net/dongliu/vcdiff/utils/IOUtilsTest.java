@@ -17,7 +17,7 @@ public class IOUtilsTest {
     public void testVarInt() throws IOException {
         int i = 100;
         ByteBuf byteBuf = new ByteBuf();
-        IOUtils.writeVarIntBE(byteBuf, i);
+        IOUtils.writeVarIntBE(i, byteBuf);
         Assert.assertEquals(byteBuf.toBytes().length, IOUtils.varIntLen(i));
         InputStream in = new ByteArrayInputStream(byteBuf.toBytes());
         int j = IOUtils.readVarIntBE(in);
@@ -26,7 +26,7 @@ public class IOUtilsTest {
 
         i = 1001000000;
         byteBuf = new ByteBuf();
-        IOUtils.writeVarIntBE(byteBuf, i);
+        IOUtils.writeVarIntBE(i, byteBuf);
         Assert.assertEquals(byteBuf.toBytes().length, IOUtils.varIntLen(i));
         in = new ByteArrayInputStream(byteBuf.toBytes());
         j = IOUtils.readVarIntBE(in);
@@ -35,7 +35,7 @@ public class IOUtilsTest {
 
         i = 0;
         byteBuf = new ByteBuf();
-        IOUtils.writeVarIntBE(byteBuf, i);
+        IOUtils.writeVarIntBE(i, byteBuf);
         Assert.assertEquals(byteBuf.toBytes().length, IOUtils.varIntLen(i));
         in = new ByteArrayInputStream(byteBuf.toBytes());
         j = IOUtils.readVarIntBE(in);
