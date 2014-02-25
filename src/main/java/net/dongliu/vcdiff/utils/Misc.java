@@ -1,11 +1,10 @@
 package net.dongliu.vcdiff.utils;
 
 /**
- * for process unsigned values
  *
  * @author dongliu
  */
-public class U {
+public class Misc {
 
     /**
      * convert byte as unsigned value to short
@@ -15,5 +14,14 @@ public class U {
      */
     public static short b(byte b) {
         return (short) (b & 0xFF);
+    }
+
+    public static boolean ArrayEqual(byte[] a, byte[] b, int size) {
+        for (int i = 0; i < size; i++) {
+            if (a[i] != b[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 }

@@ -1,6 +1,6 @@
 package net.dongliu.vcdiff.vc;
 
-import net.dongliu.vcdiff.utils.U;
+import net.dongliu.vcdiff.utils.Misc;
 
 /**
  * vcdiff instruction table.
@@ -23,8 +23,8 @@ public class CodeTable {
     public CodeTable(byte[] bytes) {
         entries = initCodeTableEntries();
         for (int i = 0; i < CodeTableSize; i++) {
-            entries[i][0] = new Instruction(bytes[i], U.b(bytes[i + 512]), U.b(bytes[i + 1024]));
-            entries[i][1] = new Instruction(bytes[i + 256], U.b(bytes[i + 768]), U.b(bytes[i + 1280]));
+            entries[i][0] = new Instruction(bytes[i], Misc.b(bytes[i + 512]), Misc.b(bytes[i + 1024]));
+            entries[i][1] = new Instruction(bytes[i + 256], Misc.b(bytes[i + 768]), Misc.b(bytes[i + 1280]));
         }
     }
 

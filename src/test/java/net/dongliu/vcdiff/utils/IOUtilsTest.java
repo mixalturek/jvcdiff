@@ -1,7 +1,7 @@
 package net.dongliu.vcdiff.utils;
 
+import net.dongliu.vcdiff.io.ByteBuf;
 import org.junit.Assert;
-import net.dongliu.vcdiff.diff.ByteBuf;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;

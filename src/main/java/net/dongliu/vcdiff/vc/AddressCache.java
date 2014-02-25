@@ -1,6 +1,6 @@
 package net.dongliu.vcdiff.vc;
 
-import net.dongliu.vcdiff.io.ByteArrayRandomAccessStream;
+import net.dongliu.vcdiff.io.ByteArrayStream;
 import net.dongliu.vcdiff.io.RandomAccessStream;
 import net.dongliu.vcdiff.utils.IOUtils;
 
@@ -55,7 +55,7 @@ public class AddressCache {
         Arrays.fill(near, 0);
         Arrays.fill(same, 0);
 
-        addressStream = new ByteArrayRandomAccessStream(addresses, true);
+        addressStream = new ByteArrayStream(addresses, true);
     }
 
     /**

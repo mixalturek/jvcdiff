@@ -8,14 +8,14 @@ public class RollingHash {
     /**
      * Multiplier for incremental hashing.
      */
-    private static final int kMult = 257;
+    private static final int MULTIPLIER = 257;
 
     /**
-     * All hashes are returned modulo "kBase".  Current implementation requires
-     * kBase <= 2^32/kMult to avoid overflow.  Also, kBase must be a power of two
+     * All hashes are returned modulo "HASH_BASE".  Current implementation requires
+     * HASH_BASE <= 2^32/MULTIPLIER to avoid overflow.  Also, HASH_BASE must be a power of two
      * so that we can compute modulus efficiently.
      */
-    protected static final int kBase = 1 << 22;
+    protected static final int HASH_BASE = 1 << 22;
 
 
     /**
@@ -47,14 +47,14 @@ public class RollingHash {
     }
 
     private int hashStep(int partialHash, byte nextByte) {
-        return modBase((partialHash * kMult) + (nextByte & 0XFF));
+        return modBase((partialHash * MULTIPLIER) + (nextByte & 0XFF));
     }
 
     /**
-     * Returns operand % kBase, assuming that kBase is a power of two.
+     * Returns operand % HASH_BASE, assuming that HASH_BASE is a power of two.
      */
     private int modBase(int i) {
-        return i & (kBase - 1);
+        return i & (HASH_BASE - 1);
     }
 
     /**
@@ -62,12 +62,10 @@ public class RollingHash {
      */
     private int[] init() {
         int[] removeTable = new int[256];
-        // Compute multiplier.  Concisely, it is:
-        //     pow(kMult, (windowSize - 1)) % kBase,
-        // but we compute the power in integer form.
+        // Compute multiplier.  Concisely, it is: pow(MULTIPLIER, (windowSize - 1)) % HASH_BASE,
         int multiplier = 1;
         for (int i = 0; i < windowSize - 1; ++i) {
-            multiplier = modBase(multiplier * kMult);
+            multiplier = modBase(multiplier * MULTIPLIER);
         }
         int byteTimesMultiplier = 0;
         for (int b = 0; b < 256; ++b) {
@@ -79,7 +77,7 @@ public class RollingHash {
 
     // Given an unsigned integer "operand", returns an unsigned integer "result"
     // such that
-    //     result < kBase
+    //     result < HASH_BASE
     // and
     //     modBase(operand + result) == 0
     protected int findModBaseInverse(int i) {

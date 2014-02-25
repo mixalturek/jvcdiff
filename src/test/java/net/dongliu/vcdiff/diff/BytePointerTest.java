@@ -1,5 +1,6 @@
 package net.dongliu.vcdiff.diff;
 
+import net.dongliu.vcdiff.io.ByteBuf;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

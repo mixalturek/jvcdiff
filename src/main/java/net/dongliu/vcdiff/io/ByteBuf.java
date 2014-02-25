@@ -1,4 +1,6 @@
-package net.dongliu.vcdiff.diff;
+package net.dongliu.vcdiff.io;
+
+import net.dongliu.vcdiff.diff.Pointer;
 
 import java.io.IOException;
 import java.io.OutputStream;

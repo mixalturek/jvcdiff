@@ -11,7 +11,7 @@ import java.nio.channels.FileChannel;
  *
  * @author dongliu
  */
-public class FileRandomAccessStream implements RandomAccessStream {
+public class FileStream implements RandomAccessStream {
 
     private final boolean readOnly;
     private final RandomAccessFile raf;
@@ -22,11 +22,11 @@ public class FileRandomAccessStream implements RandomAccessStream {
      * @param file
      * @throws FileNotFoundException
      */
-    public FileRandomAccessStream(RandomAccessFile file) throws FileNotFoundException {
+    public FileStream(RandomAccessFile file) throws FileNotFoundException {
         this(file, false);
     }
 
-    public FileRandomAccessStream(RandomAccessFile file, boolean readOnly)
+    public FileStream(RandomAccessFile file, boolean readOnly)
             throws FileNotFoundException {
         if (file == null) {
             throw new NullPointerException();
@@ -97,7 +97,7 @@ public class FileRandomAccessStream implements RandomAccessStream {
         MappedByteBuffer buffer = fc.map(FileChannel.MapMode.READ_ONLY,
                 this.raf.getFilePointer(), length);
         this.raf.seek(this.raf.getFilePointer() + length);
-        return new ByteArrayRandomAccessStream(buffer);
+        return new ByteArrayStream(buffer);
     }
 
 

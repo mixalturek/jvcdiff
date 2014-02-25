@@ -2,7 +2,6 @@ package net.dongliu.vcdiff;
 
 import net.dongliu.vcdiff.diff.Pointer;
 import net.dongliu.vcdiff.diff.VcdiffEngine;
-import net.dongliu.vcdiff.exception.VcdiffDecodeException;
 import net.dongliu.vcdiff.exception.VcdiffEncodeException;
 import net.dongliu.vcdiff.utils.IOUtils;
 import net.dongliu.vcdiff.vc.CodeTableWriter;

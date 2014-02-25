@@ -12,8 +12,6 @@ public class Instruction {
     public static final byte TYPE_RUN = 2;
     public static final byte TYPE_COPY = 3;
     public static final byte TYPE_LAST_INSTRUCTION = TYPE_COPY;
-    public static final byte TYPE_ERROR = 4;
-    public static final byte TYPE_END_OF_DATA = 5;
 
     /**
      * type([0,3]) can be hold in one signed byte.

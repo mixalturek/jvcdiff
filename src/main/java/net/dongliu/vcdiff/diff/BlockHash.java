@@ -5,25 +5,13 @@ import net.dongliu.vcdiff.exception.VcdiffEncodeException;
 import java.util.Arrays;
 
 /**
- * A generic hash table which will be used to keep track of byte runs
- * of size K_BLOCK_SIZE in both the incrementally processed target data
- * and the preprocessed source dictionary.
- * <p/>
- * A custom hash table implementation is used instead of the standard hash_map template
- * because we know that there will be exactly one entry in the BlockHash
- * corresponding to each K_BLOCK_SIZE bytes in the source data, which makes certain optimizations possible:
- * <p/>
- * 1. The memory for the hash table and for all hash entries can be allocated in one step rather than
- * incrementally for each insert operation.
- * <p/>
- * 2. A single integer can be used to represent both the index of the next hash entry in the chain
- * and the position of the entry within the source data (== K_BLOCK_SIZE * block_number).
- * This greatly reduces the size of a hash entry.
+ * A generic hash table which will be used to keep track of byte runs of size K_BLOCK_SIZE
+ * in both the incrementally processed target data and the preprocessed source dictionary.
  *
  * @author dongliu
  */
 public class BlockHash {
-    // Block size as per Bentley/McIlroy; must be a power of two.
+    // Block size; must be a power of two.
     public static final int K_BLOCK_SIZE = 16;
 
     private Pointer sourceData;
@@ -51,9 +39,12 @@ public class BlockHash {
 
     private int lastBlockAdded;
 
-    static final int kMaxProbes = 16;
+    /**
+     * max block num examined when conflicted
+     */
+    private static final int MAX_PROBES = 16;
 
-    static final int kMaxMatchesToCheck = (K_BLOCK_SIZE >= 32) ? 32 : (32 * (32 / K_BLOCK_SIZE));
+    private static final int MAX_MATCHES_TO_CHECK = (K_BLOCK_SIZE >= 32) ? 32 : (32 * (32 / K_BLOCK_SIZE));
 
     public BlockHash(Pointer sourceData, int sourceSize, int startingOffset) {
         this.sourceData = sourceData;
@@ -97,10 +88,10 @@ public class BlockHash {
         return newTargetHash;
     }
 
-    private int calcTableSize(int dictionarySize) throws VcdiffEncodeException {
-        // Overallocate the hash table by making it the same size (in bytes) as the source data.
+    private int calcTableSize(int sourceSize) throws VcdiffEncodeException {
+        // Over allocate the hash table by making it the same size (in bytes) as the source data.
         int intSize = 4;
-        int minSize = (dictionarySize / intSize) + 1;
+        int minSize = (sourceSize / intSize) + 1;
         int tableSize = 1;
         // Find the smallest power of 2 that is >= min_size, and assign
         // that value to table_size.
@@ -108,7 +99,7 @@ public class BlockHash {
             tableSize <<= 1;
             // Guard against an infinite loop
             if (tableSize <= 0) {
-                throw new VcdiffEncodeException("too large data size:" + dictionarySize);
+                throw new VcdiffEncodeException("too large data size:" + sourceSize);
             }
         }
         return tableSize;
@@ -197,7 +188,7 @@ public class BlockHash {
         int probes = 0;
         while ((blockNumber >= 0) &&
                 !blockContentsMatch(block, sourceData.slice(blockNumber * K_BLOCK_SIZE))) {
-            if (++probes > kMaxProbes) {
+            if (++probes > MAX_PROBES) {
                 return -1;  // Avoid too much chaining
             }
             blockNumber = nextBlockTable[blockNumber];
@@ -256,7 +247,7 @@ public class BlockHash {
                               Match bestMatch) throws VcdiffEncodeException {
         int matchCounter = 0;
         for (int blockNumber = firstMatchingBlock(hashValue, targetCandidate);
-             (blockNumber >= 0) && ++matchCounter < kMaxMatchesToCheck;
+             (blockNumber >= 0) && ++matchCounter < MAX_MATCHES_TO_CHECK;
              blockNumber = nextMatchingBlock(blockNumber, targetCandidate)) {
             int sourceMatchOffset = blockNumber * K_BLOCK_SIZE;
             int sourceMatchEnd = sourceMatchOffset + K_BLOCK_SIZE;
@@ -324,25 +315,14 @@ public class BlockHash {
             return size;
         }
 
-        private void setSize(int size) {
-            this.size = size;
-        }
-
         public int getSourceOffset() {
             return sourceOffset;
-        }
-
-        private void setSourceOffset(int sourceOffset) {
-            this.sourceOffset = sourceOffset;
         }
 
         public int getTargetOffset() {
             return targetOffset;
         }
 
-        private void setTargetOffset(int targetOffset) {
-            this.targetOffset = targetOffset;
-        }
     }
 }
 

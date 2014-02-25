@@ -1,11 +1,10 @@
 package net.dongliu.vcdiff.vc;
 
-import net.dongliu.vcdiff.diff.ByteBuf;
+import net.dongliu.vcdiff.io.ByteBuf;
 import net.dongliu.vcdiff.diff.Pointer;
-import net.dongliu.vcdiff.exception.VcdiffDecodeException;
 import net.dongliu.vcdiff.exception.VcdiffEncodeException;
 import net.dongliu.vcdiff.utils.IOUtils;
-import net.dongliu.vcdiff.utils.U;
+import net.dongliu.vcdiff.utils.Misc;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -155,7 +154,7 @@ public class CodeTableWriter {
             throws IOException, VcdiffEncodeException {
         if (lastOpcodeIndex >= 0) {
             // try to combine the last instruction and this instruction
-            short lastOpcode = U.b(instructions.get(lastOpcodeIndex));
+            short lastOpcode = Misc.b(instructions.get(lastOpcodeIndex));
             short compoundOpcode;
             if (size <= BYTE_MAX) {
                 compoundOpcode = instructionMap.lookupCombinedOpcode(lastOpcode,

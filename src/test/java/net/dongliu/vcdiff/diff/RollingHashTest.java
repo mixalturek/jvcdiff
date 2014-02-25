@@ -28,8 +28,8 @@ public class RollingHashTest {
     @Test
     public void testFindModBaseInverse() {
         int result = rollingHash.findModBaseInverse(10);
-        Assert.assertTrue(result < RollingHash.kBase);
-        Assert.assertEquals(0, (result + 10) % RollingHash.kBase);
+        Assert.assertTrue(result < RollingHash.HASH_BASE);
+        Assert.assertEquals(0, (result + 10) % RollingHash.HASH_BASE);
     }
 
     @Test

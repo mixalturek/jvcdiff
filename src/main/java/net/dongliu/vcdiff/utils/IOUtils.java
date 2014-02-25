@@ -1,6 +1,6 @@
 package net.dongliu.vcdiff.utils;
 
-import net.dongliu.vcdiff.io.ByteArrayRandomAccessStream;
+import net.dongliu.vcdiff.io.ByteArrayStream;
 import net.dongliu.vcdiff.io.RandomAccessStream;
 
 import java.io.*;
@@ -71,7 +71,7 @@ public class IOUtils {
             return randomAccessStream.slice(length);
         } else {
             byte[] bytes = readBytes(randomAccessStream, length);
-            return new ByteArrayRandomAccessStream(bytes, true);
+            return new ByteArrayStream(bytes, true);
         }
     }
 
@@ -105,66 +105,6 @@ public class IOUtils {
         } catch (IOException ignore) {
         }
     }
-
-    /**
-     * bytes to int.
-     *
-     * @return
-     */
-    public static int makeInt(byte b3, byte b2, byte b1, byte b0) {
-        return (((b3) << 24) | ((b2 & 0xff) << 16) | ((b1 & 0xff) << 8) | ((b0 & 0xff)));
-    }
-
-    /**
-     * bytes to short.
-     *
-     * @return
-     */
-    public static short makeShort(byte b1, byte b0) {
-        return (short) (((b1 & 0xff) << 8) | ((b0 & 0xff)));
-    }
-
-    /**
-     * read int, Big-endian.
-     *
-     * @return
-     */
-    public static int makeIntB(byte[] ba, int pos) {
-        if (ba == null || ba.length < 4 + pos) {
-            throw new IllegalArgumentException("Need at lease four bytes.");
-        }
-        return makeInt(ba[pos], ba[pos + 1], ba[pos + 2], ba[pos + 3]);
-    }
-
-    /**
-     * read int, Small-endian.
-     *
-     * @return
-     */
-    public static int makeIntS(byte[] ba, int pos) {
-        if (ba == null || ba.length < 4 + pos) {
-            throw new IllegalArgumentException("Need at lease four bytes.");
-        }
-        return makeInt(ba[pos + 3], ba[pos + 2], ba[pos + 1], ba[pos]);
-    }
-
-
-    public static short makeShortS(byte[] ba, int pos) {
-        if (ba == null || ba.length < 2 + pos) {
-            throw new IllegalArgumentException("Need at lease two bytes.");
-        }
-        return makeShort(ba[pos + 1], ba[pos]);
-    }
-
-    public static boolean ArrayEqual(byte[] a, byte[] b, int size) {
-        for (int i = 0; i < size; i++) {
-            if (a[i] != b[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
 
     /**
      * read one byte from input stream.

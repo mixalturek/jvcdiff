@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
  *
  * @author dongliu
  */
-public class ByteArrayRandomAccessStream implements RandomAccessStream {
+public class ByteArrayStream implements RandomAccessStream {
 
     private ByteBuffer buffer;
 
@@ -18,19 +18,19 @@ public class ByteArrayRandomAccessStream implements RandomAccessStream {
     /**
      * Constructs a new ByteArraySeekableSource.
      */
-    public ByteArrayRandomAccessStream(byte[] source) {
+    public ByteArrayStream(byte[] source) {
         this(source, false);
     }
 
     /**
      * Constructs a new ByteArraySeekableSource.
      */
-    public ByteArrayRandomAccessStream(byte[] source, boolean readOnly) {
+    public ByteArrayStream(byte[] source, boolean readOnly) {
         this.buffer = ByteBuffer.wrap(source);
         this.readOnly = readOnly;
     }
 
-    public ByteArrayRandomAccessStream(ByteBuffer bytebuffer) {
+    public ByteArrayStream(ByteBuffer bytebuffer) {
         this.buffer = bytebuffer;
         this.readOnly = bytebuffer.isReadOnly();
     }
@@ -122,6 +122,6 @@ public class ByteArrayRandomAccessStream implements RandomAccessStream {
         ByteBuffer newBuffer = this.buffer.slice();
         this.buffer.limit(limit);
         this.buffer.position(this.buffer.position() + offset);
-        return new ByteArrayRandomAccessStream(newBuffer);
+        return new ByteArrayStream(newBuffer);
     }
 }

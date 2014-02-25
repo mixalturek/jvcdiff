@@ -1,10 +1,11 @@
 package net.dongliu.vcdiff;
 
 import net.dongliu.vcdiff.exception.VcdiffDecodeException;
-import net.dongliu.vcdiff.io.ByteArrayRandomAccessStream;
-import net.dongliu.vcdiff.io.FileRandomAccessStream;
+import net.dongliu.vcdiff.io.ByteArrayStream;
+import net.dongliu.vcdiff.io.FileStream;
 import net.dongliu.vcdiff.io.RandomAccessStream;
 import net.dongliu.vcdiff.utils.IOUtils;
+import net.dongliu.vcdiff.utils.Misc;
 import net.dongliu.vcdiff.vc.AddressCache;
 import net.dongliu.vcdiff.vc.CodeTable;
 import net.dongliu.vcdiff.vc.Instruction;
@@ -51,9 +52,9 @@ public class VcdiffDecoder {
      */
     public static void decode(File sourceFile, File patchFile, File targetFile)
             throws IOException, VcdiffDecodeException {
-        RandomAccessStream sourceStream = new FileRandomAccessStream(new RandomAccessFile(sourceFile, "r"), true);
+        RandomAccessStream sourceStream = new FileStream(new RandomAccessFile(sourceFile, "r"), true);
         InputStream patchStream = new FileInputStream(patchFile);
-        RandomAccessStream targetStream = new FileRandomAccessStream(new RandomAccessFile(targetFile, "rw"));
+        RandomAccessStream targetStream = new FileStream(new RandomAccessFile(targetFile, "rw"));
         try {
             decode(sourceStream, patchStream, targetStream);
         } finally {
@@ -94,7 +95,7 @@ public class VcdiffDecoder {
     private void readHeader() throws IOException, VcdiffDecodeException {
         byte[] magic = IOUtils.readBytes(patchStream, 4);
         //magic num.
-        if (!IOUtils.ArrayEqual(magic, Vcdiff.MAGIC_HEADER, 3)) {
+        if (!Misc.ArrayEqual(magic, Vcdiff.MAGIC_HEADER, 3)) {
             // not vcdiff file.
             throw new VcdiffDecodeException("The file is not valid vcdiff file.");
         }
@@ -146,10 +147,10 @@ public class VcdiffDecoder {
 
         byte[] defaultTableData = CodeTable.Default.getBytes();
 
-        RandomAccessStream tableOriginal = new ByteArrayRandomAccessStream(defaultTableData, true);
+        RandomAccessStream tableOriginal = new ByteArrayStream(defaultTableData, true);
         InputStream tableDelta = new ByteArrayInputStream(compressedTableData);
         byte[] decompressedTableData = new byte[1536];
-        RandomAccessStream tableOutput = new ByteArrayRandomAccessStream(decompressedTableData);
+        RandomAccessStream tableOutput = new ByteArrayStream(decompressedTableData);
         VcdiffDecoder.decode(tableOriginal, tableDelta, tableOutput);
         if (tableOutput.pos() != 1536) {
             throw new VcdiffDecodeException("Compressed code table was incorrect size");
@@ -240,7 +241,7 @@ public class VcdiffDecoder {
         }
 
         byte[] targetData = new byte[targetLen];
-        RandomAccessStream targetDataStream = new ByteArrayRandomAccessStream(targetData);
+        RandomAccessStream targetDataStream = new ByteArrayStream(targetData);
 
         // Length of data for ADDs and RUNs
         int addRunDataLen = IOUtils.readVarIntBE(patchStream);
@@ -266,7 +267,7 @@ public class VcdiffDecoder {
         // Addresses section for COPYs
         byte[] addresses = IOUtils.readBytes(patchStream, addressesLen);
 
-        RandomAccessStream instructionStream = new ByteArrayRandomAccessStream(instructions, true);
+        RandomAccessStream instructionStream = new ByteArrayStream(instructions, true);
 
         cache.reset(addresses);
 
