@@ -6,7 +6,7 @@ If maven is used, add:
 ```
         <dependency>
             <groupId>net.dongliu.vcdiff</groupId>
-            <artifactId>jvcdifftId>
+            <artifactId>jvcdiff</artifactId>
             <version>1.1</version>
         </dependency>
 ```
