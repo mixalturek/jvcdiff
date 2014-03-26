@@ -1,6 +1,6 @@
 package net.dongliu.vcdiff.vc;
 
-import net.dongliu.vcdiff.io.ByteBuf;
+import net.dongliu.vcdiff.io.ByteVector;
 import net.dongliu.vcdiff.diff.Pointer;
 import net.dongliu.vcdiff.exception.VcdiffEncodeException;
 import net.dongliu.vcdiff.utils.IOUtils;
@@ -24,19 +24,19 @@ public class CodeTableWriter {
      * A series of instruction opcodes, each of which may be followed by one or two Varint values
      * representing the size parameters of the first and second instruction in the opcode.
      */
-    ByteBuf instructions = new ByteBuf();
+    ByteVector instructions = new ByteVector();
 
     /**
      * A series of data arguments (byte values) used for ADD and RUN instructions.
      */
 
-    ByteBuf data;
+    ByteVector data;
 
     /**
      * A series of Varint addresses used for COPY instructions. For the SAME mode,
      * a byte value is stored instead of a Varint.
      */
-    ByteBuf addresses;
+    ByteVector addresses;
 
     private AddressCache addressCache;
 
@@ -107,8 +107,8 @@ public class CodeTableWriter {
 
 
     void InitSectionPointers() {
-        data = new ByteBuf();
-        addresses = new ByteBuf();
+        data = new ByteVector();
+        addresses = new ByteVector();
     }
 
     public void init(int dictionarySize) {
@@ -179,7 +179,7 @@ public class CodeTableWriter {
         if (size <= BYTE_MAX) {
             opcode = instructionMap.lookupSingleOpcode(new Instruction(ist, (short) size, mode));
             if (opcode != -1) {
-                instructions.push(opcode);
+                instructions.push((byte) opcode);
                 lastOpcodeIndex = instructions.size() - 1;
                 return;
             }
@@ -190,7 +190,7 @@ public class CodeTableWriter {
             throw new VcdiffEncodeException("No matching opcode found for inst:" + ist
                     + ", size:" + size + ", mode:" + mode);
         }
-        instructions.push(opcode);
+        instructions.push((byte) opcode);
         lastOpcodeIndex = instructions.size() - 1;
         IOUtils.writeVarIntBE(size, instructions);
     }
@@ -210,7 +210,7 @@ public class CodeTableWriter {
         if (addressCache.writeAddressAsVarIntForMode(mode)) {
             IOUtils.writeVarIntBE(encodedAddress[0], addresses);
         } else {
-            addresses.push((short) encodedAddress[0]);
+            addresses.push((byte) encodedAddress[0]);
         }
         targetLength += size;
     }

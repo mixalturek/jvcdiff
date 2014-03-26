@@ -1,6 +1,6 @@
 package net.dongliu.vcdiff.diff;
 
-import net.dongliu.vcdiff.io.ByteBuf;
+import net.dongliu.vcdiff.io.ByteVector;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -9,60 +9,50 @@ import org.junit.Test;
  * @author dongliu
  */
 public class BytePointerTest {
-    static ByteBuf byteBuf;
+    static ByteVector byteVector;
 
     @Before
     public void setUp() throws Exception {
-        byteBuf = new ByteBuf();
+        byteVector = new ByteVector();
     }
 
     @Test
     public void testPush() throws Exception {
-        byteBuf.push((byte) 12);
-        Assert.assertEquals(1, byteBuf.size());
-        byteBuf.push((short) 255);
-        Assert.assertEquals(2, byteBuf.size());
-        byteBuf.push(new byte[]{1, 2});
-        Assert.assertEquals(4, byteBuf.size());
-    }
-
-    @Test
-    public void testUnPush() throws Exception {
-        byteBuf.push((byte) 12);
-        Assert.assertEquals(1, byteBuf.size());
-        byteBuf.unPush(1);
-        Assert.assertEquals(0, byteBuf.size());
-        byteBuf.unPush(1);
-        Assert.assertEquals(0, byteBuf.size());
+        byteVector.push((byte) 12);
+        Assert.assertEquals(1, byteVector.size());
+        byteVector.push((byte) 255);
+        Assert.assertEquals(2, byteVector.size());
+        byteVector.push(new byte[]{1, 2});
+        Assert.assertEquals(4, byteVector.size());
     }
 
     @Test
     public void testGet() throws Exception {
-        byteBuf.push(new byte[]{1, 2});
-        Assert.assertEquals(2, byteBuf.get(1));
+        byteVector.push(new byte[]{1, 2});
+        Assert.assertEquals(2, byteVector.get(1));
     }
 
     @Test
     public void testGetUnsigned() throws Exception {
-        byteBuf.push(new byte[]{-1, -1});
-        Assert.assertEquals(255, byteBuf.getUnsigned(0));
-        byteBuf.push((short) 255);
-        Assert.assertEquals(255, byteBuf.getUnsigned(2));
+        byteVector.push(new byte[]{-1, -1});
+        Assert.assertEquals(255, byteVector.getUnsigned(0));
+        byteVector.push((byte) 255);
+        Assert.assertEquals(255, byteVector.getUnsigned(2));
     }
 
     @Test
     public void testSet() throws Exception {
-        byteBuf.push(new byte[]{-1, -1});
-        Assert.assertEquals(255, byteBuf.getUnsigned(0));
-        byteBuf.set(1, (byte)255);
-        Assert.assertEquals(255, byteBuf.getUnsigned(1));
+        byteVector.push(new byte[]{-1, -1});
+        Assert.assertEquals(255, byteVector.getUnsigned(0));
+        byteVector.set(1, (byte)255);
+        Assert.assertEquals(255, byteVector.getUnsigned(1));
     }
 
     @Test
     public void testClear() throws Exception {
-        byteBuf.push(new byte[]{-1, -1});
-        Assert.assertEquals(255, byteBuf.getUnsigned(0));
-        byteBuf.clear();
-        Assert.assertTrue(byteBuf.empty());
+        byteVector.push(new byte[]{-1, -1});
+        Assert.assertEquals(255, byteVector.getUnsigned(0));
+        byteVector.clear();
+        Assert.assertTrue(byteVector.empty());
     }
 }
