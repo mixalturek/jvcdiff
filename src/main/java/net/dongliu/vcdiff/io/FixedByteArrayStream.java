@@ -5,44 +5,41 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 /**
- * Wraps a byte array / byte buffer as a source / target.
+ * Wraps a byte array / byte buffer as a source, the buffer's size is fixed.
  *
  * @author dongliu
  */
-public class ByteArrayStream implements RandomAccessStream {
+public class FixedByteArrayStream implements RandomAccessStream {
 
     private ByteBuffer buffer;
 
-    private int maxSize;
+    private boolean readOnly;
 
-    private static final int INIT_SIZE = 64;
-
-    public ByteArrayStream() {
-        this(INIT_SIZE);
-    }
-
-    public ByteArrayStream(int initSize) {
-        this(ByteBuffer.allocate(initSize));
+    /**
+     * Constructs a new ByteArraySeekableSource.
+     */
+    public FixedByteArrayStream(byte[] source) {
+        this(source, false);
     }
 
     /**
      * Constructs a new ByteArraySeekableSource.
      */
-    public ByteArrayStream(byte[] source) {
-        this(ByteBuffer.wrap(source));
+    public FixedByteArrayStream(byte[] source, boolean readOnly) {
+        this.buffer = ByteBuffer.wrap(source);
+        this.readOnly = readOnly;
     }
 
-    public ByteArrayStream(ByteBuffer bytebuffer) {
+    public FixedByteArrayStream(ByteBuffer bytebuffer) {
         this.buffer = bytebuffer;
-        updateMaxSize();
+        this.readOnly = bytebuffer.isReadOnly();
     }
 
     @Override
     public void seek(int pos) throws IOException {
-        if (pos < 0) {
-            throw new IOException("Not a seekable pos, less than zero.");
+        if (pos < 0 || pos > this.buffer.limit()) {
+            throw new IOException("Not a seekable pos, larger than length or less than zero.");
         }
-        ensureCapacity(pos);
         this.buffer.position(pos);
     }
 
@@ -77,9 +74,10 @@ public class ByteArrayStream implements RandomAccessStream {
 
     @Override
     public void write(byte[] data, int offset, int length) {
-        ensureCapacity(this.buffer.position() + length);
+        if (readOnly) {
+            throw new UnsupportedOperationException();
+        }
         this.buffer.put(data, offset, length);
-        updateMaxSize();
     }
 
     @Override
@@ -89,19 +87,20 @@ public class ByteArrayStream implements RandomAccessStream {
 
     @Override
     public void write(byte b) {
-        ensureCapacity(this.buffer.position() + 1);
+        if (readOnly) {
+            throw new UnsupportedOperationException();
+        }
         this.buffer.put(b);
-        updateMaxSize();
     }
 
     @Override
     public int length() throws IOException {
-        return this.maxSize;
+        return this.buffer.limit();
     }
 
     @Override
     public boolean isReadOnly() {
-        return false;
+        return this.readOnly;
     }
 
     @Override
@@ -124,46 +123,5 @@ public class ByteArrayStream implements RandomAccessStream {
         this.buffer.limit(limit);
         this.buffer.position(this.buffer.position() + offset);
         return new ByteArrayStream(newBuffer);
-    }
-
-    private void ensureCapacity(int size) {
-        if (this.buffer.limit() < size) {
-            int newCapacity = this.buffer.limit() << 1;
-            if (newCapacity < size) {
-                newCapacity = size;
-            }
-
-            ByteBuffer newBuffer;
-            if (this.buffer.isDirect()) {
-                newBuffer = ByteBuffer.allocateDirect(newCapacity);
-            } else {
-                newBuffer = ByteBuffer.allocate(newCapacity);
-            }
-
-            int position = this.buffer.position();
-            this.buffer.rewind();
-            newBuffer.put(this.buffer);
-            newBuffer.position(position);
-            newBuffer.limit(newCapacity);
-            this.buffer = newBuffer;
-        }
-    }
-
-    private void updateMaxSize() {
-        if (this.buffer.position() > maxSize) {
-            maxSize = this.buffer.position();
-        }
-    }
-
-    /**
-     * copy internal data into byte array
-     *
-     * @return byte array
-     */
-    public byte[] toBytes() {
-        this.buffer.position(0);
-        byte[] data = new byte[this.maxSize];
-        this.buffer.get(data);
-        return data;
     }
 }

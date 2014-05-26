@@ -5,3 +5,4 @@ bin/
 target/
 *.iml
 .idea/
+Main.java

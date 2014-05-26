@@ -7,6 +7,8 @@ import java.io.OutputStream;
 import java.nio.BufferOverflowException;
 
 /**
+ * this may be instead by ByteArrayStream
+ *
  * @author dongliu
  */
 public class ByteVector extends OutputStream {
@@ -15,6 +17,7 @@ public class ByteVector extends OutputStream {
     private static final int INIT_SIZE = 32;
 
     private static final float expandFactor = 2.0f;
+
     public ByteVector() {
         this.data = new byte[INIT_SIZE];
     }

@@ -1,6 +1,7 @@
 package net.dongliu.vcdiff.utils;
 
 import net.dongliu.vcdiff.io.ByteArrayStream;
+import net.dongliu.vcdiff.io.FixedByteArrayStream;
 import net.dongliu.vcdiff.io.RandomAccessStream;
 
 import java.io.*;
@@ -71,7 +72,7 @@ public class IOUtils {
             return randomAccessStream.slice(length);
         } else {
             byte[] bytes = readBytes(randomAccessStream, length);
-            return new ByteArrayStream(bytes, true);
+            return new FixedByteArrayStream(bytes, true);
         }
     }
 

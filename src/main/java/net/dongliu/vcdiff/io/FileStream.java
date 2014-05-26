@@ -97,7 +97,7 @@ public class FileStream implements RandomAccessStream {
         MappedByteBuffer buffer = fc.map(FileChannel.MapMode.READ_ONLY,
                 this.raf.getFilePointer(), length);
         this.raf.seek(this.raf.getFilePointer() + length);
-        return new ByteArrayStream(buffer);
+        return new FixedByteArrayStream(buffer);
     }
 
 

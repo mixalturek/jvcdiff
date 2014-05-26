@@ -3,6 +3,7 @@ package net.dongliu.vcdiff;
 import net.dongliu.vcdiff.exception.VcdiffDecodeException;
 import net.dongliu.vcdiff.io.ByteArrayStream;
 import net.dongliu.vcdiff.io.FileStream;
+import net.dongliu.vcdiff.io.FixedByteArrayStream;
 import net.dongliu.vcdiff.io.RandomAccessStream;
 import net.dongliu.vcdiff.utils.IOUtils;
 import net.dongliu.vcdiff.utils.Misc;
@@ -147,7 +148,7 @@ public class VcdiffDecoder {
 
         byte[] defaultTableData = CodeTable.Default.getBytes();
 
-        RandomAccessStream tableOriginal = new ByteArrayStream(defaultTableData, true);
+        RandomAccessStream tableOriginal = new FixedByteArrayStream(defaultTableData, true);
         InputStream tableDelta = new ByteArrayInputStream(compressedTableData);
         byte[] decompressedTableData = new byte[1536];
         RandomAccessStream tableOutput = new ByteArrayStream(decompressedTableData);
@@ -267,7 +268,7 @@ public class VcdiffDecoder {
         // Addresses section for COPYs
         byte[] addresses = IOUtils.readBytes(patchStream, addressesLen);
 
-        RandomAccessStream instructionStream = new ByteArrayStream(instructions, true);
+        RandomAccessStream instructionStream = new FixedByteArrayStream(instructions, true);
 
         cache.reset(addresses);
 
