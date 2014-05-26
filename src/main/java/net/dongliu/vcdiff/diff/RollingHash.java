@@ -12,7 +12,7 @@ public class RollingHash {
 
     /**
      * All hashes are returned modulo "HASH_BASE".  Current implementation requires
-     * HASH_BASE <= 2^32/MULTIPLIER to avoid overflow.  Also, HASH_BASE must be a power of two
+     * HASH_BASE less or equal than 2^32/MULTIPLIER to avoid overflow.  Also, HASH_BASE must be a power of two
      * so that we can compute modulus efficiently.
      */
     protected static final int HASH_BASE = 1 << 22;
@@ -37,6 +37,8 @@ public class RollingHash {
 
     /**
      * Compute a hash of the window [0, windowSize).
+     *
+     * @param pointer the pointer
      */
     public int hash(Pointer pointer) {
         int h = 0;
@@ -86,12 +88,17 @@ public class RollingHash {
 
     /**
      * Update a hash by removing the oldest byte and adding a new byte.
-     * <p/>
+     * <p>
      * UpdateHash takes the hash value of buffer[0] ... buffer[windowSize -1]
      * along with the value of buffer[0] (the "old_first_byte" argument)
      * and the value of buffer[windowSize] (the "new_last_byte" argument).
      * It quickly computes the hash value of buffer[1] ... buffer[windowSize]
      * without having to run hash() on the entire window.
+     * </p>
+     *
+     * @param oldHash the old hash
+     * @param oldFirstByte the old first byte
+     * @param newLastByte the new last byte
      */
     public int updateHash(int oldHash, byte oldFirstByte, byte newLastByte) {
         int partial_hash = removeFirstByteFromHash(oldHash, oldFirstByte);

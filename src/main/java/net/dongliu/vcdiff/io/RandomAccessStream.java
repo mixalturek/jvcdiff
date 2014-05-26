@@ -2,7 +2,6 @@ package net.dongliu.vcdiff.io;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 /**
  * A stream has seek , length and pos method.(so it is NOT a stream in fact).
@@ -12,7 +11,7 @@ import java.nio.ByteBuffer;
 public interface RandomAccessStream extends Closeable {
 
     /**
-     * Sets the position for the next {@link #read(ByteBuffer)}.
+     * Sets the position for the next read.
      */
     void seek(int pos) throws IOException;
 

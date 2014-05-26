@@ -108,6 +108,8 @@ public class BlockHash {
     /**
      * If the hash value is already available from the rolling hash,
      * call this function to save time.
+     *
+     * @param hashValue the hash value
      */
     public void addBlock(int hashValue) throws VcdiffEncodeException {
         // The initial value of last_block_added_ is -1.
@@ -148,7 +150,9 @@ public class BlockHash {
     /**
      * add all blocks till endIndex.
      *
-     * @param endIndex
+     * @param endIndex the end index
+     *
+     * @throws VcdiffEncodeException
      */
     public void addAllBlocksThroughIndex(int endIndex) throws VcdiffEncodeException {
         if (endIndex > sourceSize) {
