@@ -163,6 +163,7 @@ public class ByteArrayStream implements RandomAccessStream {
     public byte[] toBytes() {
         this.buffer.position(0);
         byte[] data = new byte[this.maxSize];
+        this.buffer.limit(this.maxSize);
         this.buffer.get(data);
         return data;
     }

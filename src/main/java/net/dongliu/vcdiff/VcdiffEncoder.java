@@ -6,10 +6,7 @@ import net.dongliu.vcdiff.exception.VcdiffEncodeException;
 import net.dongliu.vcdiff.utils.IOUtils;
 import net.dongliu.vcdiff.vc.CodeTableWriter;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 
 /**
  * vcdiff encoder, based on Bentley-McIlroy 99: "Data Compression Using Long Common Strings.",
@@ -19,9 +16,9 @@ import java.io.IOException;
  */
 public class VcdiffEncoder {
 
-    private final File source;
-    private final File target;
-    private final File diff;
+    private final InputStream source;
+    private final InputStream target;
+    private final OutputStream diff;
     /**
      * Determines whether to look for matches within the previously encoded
      * target data, or just within the source (dictionary) data.
@@ -36,7 +33,7 @@ public class VcdiffEncoder {
 
     private static final int DEFAULT_WINDOW_SIZE = 16 * 1024 * 1024;
 
-    public VcdiffEncoder(File source, File target, File diff) {
+    public VcdiffEncoder(InputStream source, InputStream target, OutputStream diff) {
         this.source = source;
         this.target = target;
         this.diff = diff;
@@ -53,17 +50,19 @@ public class VcdiffEncoder {
      */
     public static void encode(File sourceFile, File targetFile, File patchFile)
             throws IOException, VcdiffEncodeException {
-        VcdiffEncoder encoder = new VcdiffEncoder(sourceFile, targetFile, patchFile);
+        VcdiffEncoder encoder = new VcdiffEncoder(new FileInputStream(sourceFile),
+                new FileInputStream(targetFile),
+                new FileOutputStream(patchFile));
         encoder.encode();
     }
 
     public void encode() throws IOException, VcdiffEncodeException {
-        byte[] sourceData = IOUtils.readAll(new FileInputStream(source));
+        byte[] sourceData = IOUtils.readAll(source);
         VcdiffEngine engine = new VcdiffEngine(new Pointer(sourceData), sourceData.length);
         engine.init();
-        FileInputStream targetStream = new FileInputStream(target);
+        InputStream targetStream = target;
         try {
-            FileOutputStream diffStream = new FileOutputStream(diff);
+            OutputStream diffStream = diff;
             try {
                 coder.init(engine.getSourceSize());
                 coder.writeHeader(diffStream);
