@@ -1,3 +1,6 @@
+1.2.2
+* add stream api for vcdiff encode
+* ByteArrayStream set bytebuffer limit to it's max size before getBytes
 
 1.2.1
 * add expandable byte array stream impl, which can be used to hold output data.
