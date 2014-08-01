@@ -6,7 +6,7 @@ The encoding strategy is largely based on Bentley-McIlroy 99: "[Data Compression
 If maven is used, add:
 ```
         <dependency>
-            <groupId>net.dongliu.vcdiff</groupId>
+            <groupId>net.dongliu</groupId>
             <artifactId>jvcdiff</artifactId>
             <version>1.1</version>
         </dependency>
