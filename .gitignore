@@ -1,4 +1,10 @@
+.classpath
+.project
+.settings/
+bin/
 target/
 *.iml
 .idea/
-TestMain.java
+Main.java
+build/
+.gradle/
