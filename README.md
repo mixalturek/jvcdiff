@@ -8,7 +8,7 @@ If maven is used, add:
         <dependency>
             <groupId>net.dongliu</groupId>
             <artifactId>jvcdiff</artifactId>
-            <version>1.2.3</version>
+            <version>2.0.1</version>
         </dependency>
 ```
 to your pom.xml file.
