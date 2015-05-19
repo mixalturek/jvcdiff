@@ -222,7 +222,7 @@ public class IOUtils {
     }
 
     public static byte[] readAll(InputStream in) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream(in.available());
+        ByteArrayOutputStream out = new ByteArrayOutputStream(Math.max(512, in.available()));
         byte[] buffer = new byte[1024 * 4];
         int n;
         while ((n = in.read(buffer)) != -1) {

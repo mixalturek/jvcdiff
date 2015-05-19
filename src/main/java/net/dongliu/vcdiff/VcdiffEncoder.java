@@ -1,12 +1,17 @@
 package net.dongliu.vcdiff;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
 import net.dongliu.vcdiff.diff.Pointer;
 import net.dongliu.vcdiff.diff.VcdiffEngine;
 import net.dongliu.vcdiff.exception.VcdiffEncodeException;
 import net.dongliu.vcdiff.utils.IOUtils;
 import net.dongliu.vcdiff.vc.CodeTableWriter;
-
-import java.io.*;
 
 /**
  * vcdiff encoder, based on Bentley-McIlroy 99: "Data Compression Using Long Common Strings.",
