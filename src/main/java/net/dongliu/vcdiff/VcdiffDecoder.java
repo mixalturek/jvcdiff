@@ -104,7 +104,7 @@ public class VcdiffDecoder {
             // version num.for standard vcdiff file, is always 0.
             throw new UnsupportedOperationException("Unsupported vcdiff version.");
         }
-        byte headerIndicator = (byte) patchStream.read();
+        byte headerIndicator = IOUtils.readByte(patchStream);
         if ((headerIndicator & 1) != 0) {
             // secondary compress.
             throw new UnsupportedOperationException(
@@ -140,8 +140,8 @@ public class VcdiffDecoder {
      */
     private void readCodeTable() throws IOException, VcdiffDecodeException {
         int compressedTableLen = IOUtils.readVarIntBE(patchStream) - 2;
-        int nearSize = patchStream.read();
-        int sameSize = patchStream.read();
+        int nearSize = IOUtils.readByte(patchStream) & 0xff;
+        int sameSize = IOUtils.readByte(patchStream) & 0xff;
         byte[] compressedTableData = IOUtils.readBytes(patchStream, compressedTableLen);
 
         byte[] defaultTableData = CodeTable.Default.getBytes();

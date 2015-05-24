@@ -134,6 +134,21 @@ public class IOUtils {
     }
 
     /**
+     * Read one byte from input stream.
+     *
+     * @return the byte
+     */
+    public static byte readByte(InputStream is) throws IOException {
+        int b = is.read();
+
+        if (b == -1) {
+            throw new IndexOutOfBoundsException("Not enough data in stream.");
+        }
+
+        return (byte) b;
+    }
+
+    /**
      * read 7 bit encoded int.by big endian.
      *
      * @return
