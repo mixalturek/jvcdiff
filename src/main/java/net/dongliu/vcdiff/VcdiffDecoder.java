@@ -128,10 +128,8 @@ public class VcdiffDecoder {
         // Ignore the application header if we have one.
         if (applicationHeader) {
             int appHeaderLength = IOUtils.readVarIntBE(patchStream);
-            // skip bytes.
-            IOUtils.readBytes(patchStream, appHeaderLength);
+            IOUtils.skipBytes(patchStream, appHeaderLength);
         }
-
     }
 
     /**

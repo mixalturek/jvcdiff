@@ -58,6 +58,17 @@ public class IOUtils {
     }
 
     /**
+     * Skip bytes in input stream.
+     */
+    public static void skipBytes(InputStream is, int size) throws IOException {
+        long skipped = is.skip(size);
+
+        if (skipped != size) {
+            throw new IndexOutOfBoundsException("Not enough data in stream to skip.");
+        }
+    }
+
+    /**
      * 从stream中获得一个指定大小为length，从当前pos处开始的stream.
      * 副作用：ss的position会增加length.
      *
