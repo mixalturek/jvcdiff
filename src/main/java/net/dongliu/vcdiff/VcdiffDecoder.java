@@ -143,16 +143,18 @@ public class VcdiffDecoder {
         int nearSize = patchStream.read();
         int sameSize = patchStream.read();
         byte[] compressedTableData = IOUtils.readBytes(patchStream, compressedTableLen);
-
         byte[] defaultTableData = CodeTable.Default.getBytes();
-
-        RandomAccessStream tableOriginal = new FixedByteArrayStream(defaultTableData, true);
-        InputStream tableDelta = new ByteArrayInputStream(compressedTableData);
         byte[] decompressedTableData = new byte[1536];
-        RandomAccessStream tableOutput = new ByteArrayStream(decompressedTableData);
-        VcdiffDecoder.decode(tableOriginal, tableDelta, tableOutput);
-        if (tableOutput.pos() != 1536) {
-            throw new VcdiffDecodeException("Compressed code table was incorrect size");
+
+        try (RandomAccessStream tableOriginal = new FixedByteArrayStream(defaultTableData, true);
+             InputStream tableDelta = new ByteArrayInputStream(compressedTableData);
+             RandomAccessStream tableOutput = new ByteArrayStream(decompressedTableData)
+        ) {
+            VcdiffDecoder.decode(tableOriginal, tableDelta, tableOutput);
+
+            if (tableOutput.pos() != 1536) {
+                throw new VcdiffDecodeException("Compressed code table was incorrect size");
+            }
         }
 
         codeTable = new CodeTable(decompressedTableData);
