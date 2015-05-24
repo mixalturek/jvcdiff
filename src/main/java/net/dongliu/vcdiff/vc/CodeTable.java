@@ -8,11 +8,21 @@ import net.dongliu.vcdiff.utils.Misc;
  * @author dongliu
  */
 public class CodeTable {
+    /**
+     * Size of code table encoded as byte array. Value 1536 is defined in RFC 3284.
+     */
+    public static final int CODE_TABLE_BYTES_SIZE = 1536;
 
     /**
      * Default code table specified in RFC 3284.
      */
     public static final CodeTable Default = BuildDefaultCodeTable();
+
+    /**
+     * Default code table encoded to bytes, read only reusable pre-computed value.
+     */
+    public static final byte[] DefaultTableData = Default.getBytes();
+
     public static final short CodeTableSize = 256;
 
     /**
@@ -136,7 +146,7 @@ public class CodeTable {
     }
 
     public byte[] getBytes() {
-        byte[] ret = new byte[1536];
+        byte[] ret = new byte[CODE_TABLE_BYTES_SIZE];
         for (int i = 0; i < CodeTableSize; i++) {
             ret[i] = entries[i][0].getIst();
             ret[i + 256] = entries[i][1].getIst();
