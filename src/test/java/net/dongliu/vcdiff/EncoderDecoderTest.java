@@ -166,4 +166,29 @@ public class EncoderDecoderTest {
 
         assertArrayEquals(target, patchedSource);
     }
+
+    @Test
+    public void testEncodeDecode_HardcodedData() throws Exception {
+        byte[] source = {
+                0, 1, 2, 3,
+                4, 5, 6, 7,
+                8, 9, 10, 11,
+                12, 13, 14, 15
+        };
+
+        byte[] target = {
+                0, 1, 2, 3,
+                22, 33, 44, 55,
+                4, 5, 6, 7,
+                4, 5, 6, 7,
+                4, 5, 6, 7,
+                4, 5, 6, 7,
+                55, 55, 55, 55
+        };
+
+        byte[] patch = diff(source, target);
+        byte[] patchedSource = applyPatch(source, patch, target.length);
+
+        assertArrayEquals(target, patchedSource);
+    }
 }
