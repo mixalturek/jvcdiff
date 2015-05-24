@@ -10,6 +10,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -190,5 +192,49 @@ public class EncoderDecoderTest {
         byte[] patchedSource = applyPatch(source, patch, target.length);
 
         assertArrayEquals(target, patchedSource);
+    }
+
+    @Test
+    public void testEncodeDecode_Files() throws Exception {
+        byte[] source = fill(new byte[10 * 1024 * 1024]);
+        byte[] target = modify(Arrays.copyOf(source, source.length), 100, 1000);
+
+        Path sourcePath = null;
+        Path targetPath = null;
+        Path patchPath = null;
+        Path patchedPath = null;
+
+        try {
+            sourcePath = Files.createTempFile(getClass().getSimpleName(), ".source");
+            targetPath = Files.createTempFile(getClass().getSimpleName(), ".modified");
+            patchPath = Files.createTempFile(getClass().getSimpleName(), ".patch");
+            patchedPath = Files.createTempFile(getClass().getSimpleName(), ".patched");
+
+            Files.write(sourcePath, source);
+            Files.write(targetPath, target);
+
+            VcdiffEncoder.encode(sourcePath.toFile(), targetPath.toFile(), patchPath.toFile());
+            VcdiffDecoder.decode(sourcePath.toFile(), patchPath.toFile(), patchedPath.toFile());
+
+            byte[] patchedSource = Files.readAllBytes(patchedPath);
+
+            assertArrayEquals(target, patchedSource);
+        } finally {
+            if (sourcePath != null) {
+                Files.deleteIfExists(sourcePath);
+            }
+
+            if (targetPath != null) {
+                Files.deleteIfExists(targetPath);
+            }
+
+            if (patchPath != null) {
+                Files.deleteIfExists(patchPath);
+            }
+
+            if (patchedPath != null) {
+                Files.deleteIfExists(patchedPath);
+            }
+        }
     }
 }
