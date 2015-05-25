@@ -34,6 +34,13 @@ public class VcdiffDecoder {
 
     private AddressCache cache = new AddressCache(4, 3);
 
+    /**
+     * Constructor. The caller is responsible for close of the passed streams.
+     *
+     * @param sourceStream older data
+     * @param patchStream  diff between older and newer data
+     * @param targetStream result of patch application to the older data (output)
+     */
     public VcdiffDecoder(RandomAccessStream sourceStream, InputStream patchStream,
                          RandomAccessStream targetStream) {
         this.sourceStream = sourceStream;
@@ -41,39 +48,30 @@ public class VcdiffDecoder {
         this.targetStream = targetStream;
     }
 
-
     /**
-     * Convenient static method for caller.Apply vcdiff decode file to originFile.
+     * Convenient static method for caller. Apply vcdiff decode file to source file.
      *
-     * @param sourceFile the old file.
-     * @param patchFile  the decode file.
-     * @param targetFile the decode result file.
-     * @throws IOException
-     * @throws net.dongliu.vcdiff.exception.VcdiffDecodeException
+     * @param sourceFile older file
+     * @param patchFile  diff between older and newer file
+     * @param targetFile result of patch application to the older file (output)
      */
     public static void decode(File sourceFile, File patchFile, File targetFile)
             throws IOException, VcdiffDecodeException {
-        RandomAccessStream sourceStream = new FileStream(new RandomAccessFile(sourceFile, "r"), true);
-        InputStream patchStream = new FileInputStream(patchFile);
-        RandomAccessStream targetStream = new FileStream(new RandomAccessFile(targetFile, "rw"));
-        try {
+        try (RandomAccessStream sourceStream = new FileStream(new RandomAccessFile(sourceFile, "r"), true);
+             InputStream patchStream = new FileInputStream(patchFile);
+             RandomAccessStream targetStream = new FileStream(new RandomAccessFile(targetFile, "rw"))
+        ) {
             decode(sourceStream, patchStream, targetStream);
-        } finally {
-            // close streams
-            IOUtils.closeQuietly(sourceStream);
-            IOUtils.closeQuietly(patchStream);
-            IOUtils.closeQuietly(targetStream);
         }
     }
 
     /**
-     * Convenient static method for caller.Apply vcdiff decode file to originFile.
+     * Convenient static method for caller. Apply vcdiff patch to source.
+     * The caller is responsible for close of the passed streams.
      *
-     * @param sourceStream the inputStream of source file.
-     * @param patchStream  the decode file stream, should be seekable.
-     * @param targetStream the output stream of output file.
-     * @throws IOException
-     * @throws net.dongliu.vcdiff.exception.VcdiffDecodeException
+     * @param sourceStream older data
+     * @param patchStream  diff between older and newer data
+     * @param targetStream result of patch application to the older data (output)
      */
     public static void decode(RandomAccessStream sourceStream, InputStream patchStream,
                               RandomAccessStream targetStream)
@@ -145,16 +143,18 @@ public class VcdiffDecoder {
         int nearSize = patchStream.read();
         int sameSize = patchStream.read();
         byte[] compressedTableData = IOUtils.readBytes(patchStream, compressedTableLen);
-
         byte[] defaultTableData = CodeTable.Default.getBytes();
-
-        RandomAccessStream tableOriginal = new FixedByteArrayStream(defaultTableData, true);
-        InputStream tableDelta = new ByteArrayInputStream(compressedTableData);
         byte[] decompressedTableData = new byte[1536];
-        RandomAccessStream tableOutput = new ByteArrayStream(decompressedTableData);
-        VcdiffDecoder.decode(tableOriginal, tableDelta, tableOutput);
-        if (tableOutput.pos() != 1536) {
-            throw new VcdiffDecodeException("Compressed code table was incorrect size");
+
+        try (RandomAccessStream tableOriginal = new FixedByteArrayStream(defaultTableData, true);
+             InputStream tableDelta = new ByteArrayInputStream(compressedTableData);
+             RandomAccessStream tableOutput = new ByteArrayStream(decompressedTableData)
+        ) {
+            VcdiffDecoder.decode(tableOriginal, tableDelta, tableOutput);
+
+            if (tableOutput.pos() != 1536) {
+                throw new VcdiffDecodeException("Compressed code table was incorrect size");
+            }
         }
 
         codeTable = new CodeTable(decompressedTableData);
