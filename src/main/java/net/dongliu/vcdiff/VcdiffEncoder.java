@@ -1,17 +1,12 @@
 package net.dongliu.vcdiff;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import net.dongliu.vcdiff.diff.Pointer;
 import net.dongliu.vcdiff.diff.VcdiffEngine;
 import net.dongliu.vcdiff.exception.VcdiffEncodeException;
 import net.dongliu.vcdiff.utils.IOUtils;
 import net.dongliu.vcdiff.vc.CodeTableWriter;
+
+import java.io.*;
 
 /**
  * vcdiff encoder, based on Bentley-McIlroy 99: "Data Compression Using Long Common Strings.",
@@ -38,6 +33,13 @@ public class VcdiffEncoder {
 
     private static final int DEFAULT_WINDOW_SIZE = 16 * 1024 * 1024;
 
+    /**
+     * Constructor. The caller is responsible for close of the passed streams.
+     *
+     * @param source older data
+     * @param target newer data
+     * @param diff   diff between older and newer data (output)
+     */
     public VcdiffEncoder(InputStream source, InputStream target, OutputStream diff) {
         this.source = source;
         this.target = target;
@@ -48,46 +50,38 @@ public class VcdiffEncoder {
     /**
      * Convenient method for encode decode file, use default setting and code tables.
      *
-     * @param sourceFile
-     * @param targetFile
-     * @param patchFile
-     * @throws IOException
+     * @param sourceFile older file
+     * @param targetFile newer file
+     * @param patchFile  diff between older and newer file (output)
      */
     public static void encode(File sourceFile, File targetFile, File patchFile)
             throws IOException, VcdiffEncodeException {
-        VcdiffEncoder encoder = new VcdiffEncoder(new FileInputStream(sourceFile),
-                new FileInputStream(targetFile),
-                new FileOutputStream(patchFile));
-        encoder.encode();
+        try (FileInputStream sourceStream = new FileInputStream(sourceFile);
+             FileInputStream targetStream = new FileInputStream(targetFile);
+             FileOutputStream patchStream = new FileOutputStream(patchFile)
+        ) {
+            VcdiffEncoder encoder = new VcdiffEncoder(sourceStream, targetStream, patchStream);
+            encoder.encode();
+        }
     }
 
     public void encode() throws IOException, VcdiffEncodeException {
         byte[] sourceData = IOUtils.readAll(source);
         VcdiffEngine engine = new VcdiffEngine(new Pointer(sourceData), sourceData.length);
         engine.init();
-        InputStream targetStream = target;
-        try {
-            OutputStream diffStream = diff;
-            try {
-                coder.init(engine.getSourceSize());
-                coder.writeHeader(diffStream);
 
-                byte[] window = new byte[windowSize];
-                int len;
-                while ((len = targetStream.read(window)) > 0) {
-                    if (addChecksum) {
-                        coder.addChecksum(computeAdler32(window, len));
-                    }
-                    engine.encode(window, len, lookForTargetMatches, diffStream, coder);
-                }
-                diffStream.flush();
-            } finally {
-                diffStream.close();
+        coder.init(engine.getSourceSize());
+        coder.writeHeader(diff);
+
+        byte[] window = new byte[windowSize];
+        int len;
+        while ((len = target.read(window)) > 0) {
+            if (addChecksum) {
+                coder.addChecksum(computeAdler32(window, len));
             }
-        } finally {
-            targetStream.close();
+            engine.encode(window, len, lookForTargetMatches, diff, coder);
         }
-
+        diff.flush();
     }
 
     public void setAddChecksum(boolean addChecksum) {

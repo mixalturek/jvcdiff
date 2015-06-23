@@ -1,5 +1,7 @@
 package net.dongliu.vcdiff.io;
 
+import net.dongliu.vcdiff.utils.ByteBufferUtils;
+
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -13,7 +15,7 @@ public class ByteArrayStream implements RandomAccessStream {
 
     private ByteBuffer buffer;
 
-    private int maxSize;
+    private int size;
 
     private static final int INIT_SIZE = 64;
 
@@ -59,7 +61,7 @@ public class ByteArrayStream implements RandomAccessStream {
 
     @Override
     public int read(byte[] data, int offset, int length) {
-
+        checkRange(offset, length);
         if (!this.buffer.hasRemaining()) {
             return -1;
         }
@@ -77,9 +79,16 @@ public class ByteArrayStream implements RandomAccessStream {
 
     @Override
     public void write(byte[] data, int offset, int length) {
+        checkRange(offset, length);
         ensureCapacity(this.buffer.position() + length);
         this.buffer.put(data, offset, length);
         updateMaxSize();
+    }
+
+    private void checkRange(int offset, int length) {
+        if (offset < 0 || length < 0) {
+            throw new IllegalArgumentException("offset and length should be larger than 0");
+        }
     }
 
     @Override
@@ -96,7 +105,7 @@ public class ByteArrayStream implements RandomAccessStream {
 
     @Override
     public int length() throws IOException {
-        return this.maxSize;
+        return this.size;
     }
 
     @Override
@@ -145,13 +154,14 @@ public class ByteArrayStream implements RandomAccessStream {
             newBuffer.put(this.buffer);
             newBuffer.position(position);
             newBuffer.limit(newCapacity);
+            ByteBufferUtils.free(this.buffer);
             this.buffer = newBuffer;
         }
     }
 
     private void updateMaxSize() {
-        if (this.buffer.position() > maxSize) {
-            maxSize = this.buffer.position();
+        if (this.buffer.position() > size) {
+            size = this.buffer.position();
         }
     }
 
@@ -162,8 +172,8 @@ public class ByteArrayStream implements RandomAccessStream {
      */
     public byte[] toBytes() {
         this.buffer.position(0);
-        byte[] data = new byte[this.maxSize];
-        this.buffer.limit(this.maxSize);
+        byte[] data = new byte[this.size];
+        this.buffer.limit(this.size);
         this.buffer.get(data);
         return data;
     }

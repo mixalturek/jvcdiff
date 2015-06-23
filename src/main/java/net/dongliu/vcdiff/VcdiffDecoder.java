@@ -34,46 +34,43 @@ public class VcdiffDecoder {
 
     private AddressCache cache = new AddressCache(4, 3);
 
-    public VcdiffDecoder(RandomAccessStream sourceStream, InputStream patchStream,
-                         RandomAccessStream targetStream) {
+    /**
+     * Constructor. The caller is responsible for close of the passed streams.
+     *
+     * @param sourceStream older data
+     * @param patchStream  diff between older and newer data
+     * @param targetStream result of patch application to the older data (output)
+     */
+    public VcdiffDecoder(RandomAccessStream sourceStream, InputStream patchStream, RandomAccessStream targetStream) {
         this.sourceStream = sourceStream;
         this.patchStream = patchStream;
         this.targetStream = targetStream;
     }
 
-
     /**
-     * Convenient static method for caller.Apply vcdiff decode file to originFile.
+     * Convenient static method for caller. Apply vcdiff decode file to source file.
      *
-     * @param sourceFile the old file.
-     * @param patchFile  the decode file.
-     * @param targetFile the decode result file.
-     * @throws IOException
-     * @throws net.dongliu.vcdiff.exception.VcdiffDecodeException
+     * @param sourceFile older file
+     * @param patchFile  diff between older and newer file
+     * @param targetFile result of patch application to the older file (output)
      */
     public static void decode(File sourceFile, File patchFile, File targetFile)
             throws IOException, VcdiffDecodeException {
-        RandomAccessStream sourceStream = new FileStream(new RandomAccessFile(sourceFile, "r"), true);
-        InputStream patchStream = new FileInputStream(patchFile);
-        RandomAccessStream targetStream = new FileStream(new RandomAccessFile(targetFile, "rw"));
-        try {
+        try (RandomAccessStream sourceStream = new FileStream(new RandomAccessFile(sourceFile, "r"), true);
+             InputStream patchStream = new FileInputStream(patchFile);
+             RandomAccessStream targetStream = new FileStream(new RandomAccessFile(targetFile, "rw"))
+        ) {
             decode(sourceStream, patchStream, targetStream);
-        } finally {
-            // close streams
-            IOUtils.closeQuietly(sourceStream);
-            IOUtils.closeQuietly(patchStream);
-            IOUtils.closeQuietly(targetStream);
         }
     }
 
     /**
-     * Convenient static method for caller.Apply vcdiff decode file to originFile.
+     * Convenient static method for caller. Apply vcdiff patch to source.
+     * The caller is responsible for close of the passed streams.
      *
-     * @param sourceStream the inputStream of source file.
-     * @param patchStream  the decode file stream, should be seekable.
-     * @param targetStream the output stream of output file.
-     * @throws IOException
-     * @throws net.dongliu.vcdiff.exception.VcdiffDecodeException
+     * @param sourceStream older data
+     * @param patchStream  diff between older and newer data
+     * @param targetStream result of patch application to the older data (output)
      */
     public static void decode(RandomAccessStream sourceStream, InputStream patchStream,
                               RandomAccessStream targetStream)
@@ -93,6 +90,16 @@ public class VcdiffDecoder {
         while (decodeWindow()) ;
     }
 
+    /*
+             Header1                                  - byte = 0xD6
+             Header2                                  - byte = 0xC3
+             Header3                                  - byte = 0xC4
+             Header4                                  - byte
+             Hdr_Indicator                            - byte
+             [Secondary compressor ID]                - byte
+             [Length of code table data]              - integer
+             [Code table data]
+     */
     private void readHeader() throws IOException, VcdiffDecodeException {
         byte[] magic = IOUtils.readBytes(patchStream, 4);
         //magic num.
@@ -105,17 +112,21 @@ public class VcdiffDecoder {
             throw new UnsupportedOperationException("Unsupported vcdiff version.");
         }
         byte headerIndicator = (byte) patchStream.read();
-        if ((headerIndicator & 1) != 0) {
-            // secondary compress.
-            throw new UnsupportedOperationException(
-                    "Patch file using secondary compressors not supported.");
+
+        boolean secondaryCompress = (headerIndicator & Vcdiff.VCD_DECOMPRESS) != 0;
+        boolean customCodeTable = ((headerIndicator & Vcdiff.VCD_CODETABLE) != 0);
+        boolean applicationHeader = ((headerIndicator & Vcdiff.VCD_EXT_APPLICATION_HEADER) != 0);
+
+        // read Secondary compressor ID
+        byte secondaryCompressorID = 0;
+        if (secondaryCompress) {
+            secondaryCompressorID = (byte) patchStream.read();
+            // now support now
+            throw new UnsupportedOperationException("Vcdiff with secondary compressors not supported");
         }
 
-        boolean customCodeTable = ((headerIndicator & 2) != 0);
-        boolean applicationHeader = ((headerIndicator & 4) != 0);
-
+        // other bits should be zero.
         if ((headerIndicator & 0xf8) != 0) {
-            // other bits should be zero.
             throw new VcdiffDecodeException("Invalid header indicator - bits 3-7 not all zero.");
         }
 
@@ -145,22 +156,30 @@ public class VcdiffDecoder {
         int nearSize = patchStream.read();
         int sameSize = patchStream.read();
         byte[] compressedTableData = IOUtils.readBytes(patchStream, compressedTableLen);
-
         byte[] defaultTableData = CodeTable.Default.getBytes();
-
-        RandomAccessStream tableOriginal = new FixedByteArrayStream(defaultTableData, true);
-        InputStream tableDelta = new ByteArrayInputStream(compressedTableData);
         byte[] decompressedTableData = new byte[1536];
-        RandomAccessStream tableOutput = new ByteArrayStream(decompressedTableData);
-        VcdiffDecoder.decode(tableOriginal, tableDelta, tableOutput);
-        if (tableOutput.pos() != 1536) {
-            throw new VcdiffDecodeException("Compressed code table was incorrect size");
+
+        try (RandomAccessStream tableOriginal = new FixedByteArrayStream(defaultTableData, true);
+             InputStream tableDelta = new ByteArrayInputStream(compressedTableData);
+             RandomAccessStream tableOutput = new ByteArrayStream(decompressedTableData)
+        ) {
+            VcdiffDecoder.decode(tableOriginal, tableDelta, tableOutput);
+
+            if (tableOutput.pos() != 1536) {
+                throw new VcdiffDecodeException("Compressed code table was incorrect size");
+            }
         }
 
         codeTable = new CodeTable(decompressedTableData);
         cache = new AddressCache(nearSize, sameSize);
     }
 
+    /*
+          Win_Indicator                            - byte
+          [Source segment length]                  - integer
+          [Source segment position]                - integer
+          The delta encoding of the target window
+     */
     private boolean decodeWindow() throws IOException, VcdiffDecodeException {
 
         int windowIndicator = patchStream.read();
@@ -169,33 +188,31 @@ public class VcdiffDecoder {
             return false;
         }
 
-        RandomAccessStream sourceStream;
-
-        int tempTargetStreamPos = -1;
-
         // xdelta3 uses an undocumented extra bit which indicates that there are
         // an extra 4 bytes at the end of the encoding for the window
-        boolean hasAdler32Checksum = ((windowIndicator & 4) == 4);
+        boolean hasAdler32Checksum = ((windowIndicator & Vcdiff.VCD_EXT_CHECKSUM) != 0);
 
         // Get rid of the checksum bit for the rest
         windowIndicator &= 0xfb;
 
         // Work out what the source data is, and detect invalid window indicators
+        RandomAccessStream sourceWindowStream;
+        int tempTargetStreamPos = -1;
         switch (windowIndicator) {
             // No source data used in this window
             case 0:
-                sourceStream = null;
+                sourceWindowStream = null;
                 break;
             // Source data comes from the original stream
-            case 1:
+            case Vcdiff.VCD_SOURCE:
                 if (this.sourceStream == null) {
                     throw new VcdiffDecodeException("Source stream required.");
                 }
-                sourceStream = this.sourceStream;
+                sourceWindowStream = this.sourceStream;
                 break;
             // Source data comes from the target stream
-            case 2:
-                sourceStream = targetStream;
+            case Vcdiff.VCD_TARGET:
+                sourceWindowStream = targetStream;
                 tempTargetStreamPos = targetStream.pos();
                 break;
             case 3:
@@ -205,22 +222,14 @@ public class VcdiffDecoder {
 
         // Read the source data, if any
         RandomAccessStream sourceData = null;
-        int sourceLen = 0;
-        // xdelta 有时生成的diff，sourceLen会大于实际可用的大小.
-        int realSourceLen = 0;
-        if (sourceStream != null) {
-            sourceLen = IOUtils.readVarIntBE(patchStream);
-            int sourcePos = IOUtils.readVarIntBE(patchStream);
+        int sourceWindowLen = 0;
+        if (sourceWindowStream != null) {
+            sourceWindowLen = IOUtils.readVarIntBE(patchStream);
+            int sourceWindowPos = IOUtils.readVarIntBE(patchStream);
 
-            sourceStream.seek(sourcePos);
+            sourceWindowStream.seek(sourceWindowPos);
 
-            realSourceLen = sourceLen;
-
-            if (sourceLen + sourcePos > sourceStream.length()) {
-                realSourceLen = sourceStream.length() - sourcePos;
-            }
-
-            sourceData = IOUtils.slice(sourceStream, realSourceLen, false);
+            sourceData = IOUtils.slice(sourceWindowStream, sourceWindowLen, false);
 
             // restore the position the source stream if appropriate
             if (tempTargetStreamPos != -1) {
@@ -228,7 +237,25 @@ public class VcdiffDecoder {
             }
         }
         //sourceStream = null;
+        deltaEncoding(hasAdler32Checksum, sourceData, sourceWindowLen);
+        return true;
+    }
 
+
+    /*
+              Length of the delta encoding        - integer
+              The delta encoding
+              Length of the target window         - integer
+              Delta_Indicator                     - byte
+              Length of data for ADDs and RUNs    - integer
+              Length of instructions section      - integer
+              Length of addresses for COPYs       - integer
+              Data section for ADDs and RUNs      - array of bytes
+              Instructions and sizes section      - array of bytes
+              Addresses section for COPYs         - array of bytes
+     */
+    private void deltaEncoding(boolean hasAdler32Checksum, RandomAccessStream sourceData, int sourceLen)
+            throws IOException, VcdiffDecodeException {
         // Length of the delta encoding
         IOUtils.readVarIntBE(patchStream);
 
@@ -237,9 +264,9 @@ public class VcdiffDecoder {
 
         // Delta_Indicator.
         int deltaIndicator = patchStream.read();
-        if (deltaIndicator != 0) {
-            throw new UnsupportedOperationException("Compressed delta sections not supported.");
-        }
+        boolean dataCompress = (deltaIndicator & Vcdiff.VCD_DATA_COMP) != 0;
+        boolean instCompress = (deltaIndicator & Vcdiff.VCD_INST_COMP) != 0;
+        boolean addrCompress = (deltaIndicator & Vcdiff.VCD_ADDR_COMP) != 0;
 
         byte[] targetData = new byte[targetLen];
         RandomAccessStream targetDataStream = new ByteArrayStream(targetData);
@@ -248,7 +275,7 @@ public class VcdiffDecoder {
         int addRunDataLen = IOUtils.readVarIntBE(patchStream);
         // Length of instructions and sizes
         int instructionsLen = IOUtils.readVarIntBE(patchStream);
-        // Length of addresses for COPYs 
+        // Length of addresses for COPYs
         int addressesLen = IOUtils.readVarIntBE(patchStream);
 
         // If we've been given a checksum, we have to read it and we might as well
@@ -260,7 +287,7 @@ public class VcdiffDecoder {
                     | checksumBytes[3];
         }
 
-        // Data section for ADDs and RUNs 
+        // Data section for ADDs and RUNs
         byte[] addRunData = IOUtils.readBytes(patchStream, addRunDataLen);
         int addRunDataIndex = 0;
         // Instructions and sizes section
@@ -293,19 +320,17 @@ public class VcdiffDecoder {
                         addRunDataIndex += size;
                         break;
                     case Instruction.TYPE_COPY:
-                        int addr = cache.decodeAddress(
-                                targetDataStream.pos() + sourceLen,
-                                instruction.getMode());
-                        if (sourceData != null && addr < realSourceLen) {
+                        int addr = cache.decodeAddress(targetDataStream.pos() + sourceLen, instruction.getMode());
+                        if (sourceData != null && addr < sourceLen) {
                             sourceData.seek(addr);
                             IOUtils.copy(sourceData, targetDataStream, size);
                         } else {
                             // Data is in target data, Get rid of the offset
                             addr -= sourceLen;
-                            // Can we just ignore overlap issues?
                             if (addr + size < targetDataStream.pos()) {
                                 targetDataStream.write(targetData, addr, size);
                             } else {
+                                // If overlap. Can we just ignore overlap issues?
                                 for (int j = 0; j < size; j++) {
                                     targetDataStream.write(targetData[addr++]);
                                 }
@@ -329,10 +354,8 @@ public class VcdiffDecoder {
 
         if (hasAdler32Checksum) {
             // check sum
-            // skip
             check(checksumInFile, targetData);
         }
-        return true;
     }
 
     private void check(int checksumInFile, byte[] targetData) {

@@ -154,7 +154,7 @@ public class CodeTableWriter {
             throws IOException, VcdiffEncodeException {
         if (lastOpcodeIndex >= 0) {
             // try to combine the last instruction and this instruction
-            short lastOpcode = Misc.b(instructions.get(lastOpcodeIndex));
+            short lastOpcode = Misc.unsignedToShort(instructions.get(lastOpcodeIndex));
             short compoundOpcode;
             if (size <= BYTE_MAX) {
                 compoundOpcode = instructionMap.lookupCombinedOpcode(lastOpcode,

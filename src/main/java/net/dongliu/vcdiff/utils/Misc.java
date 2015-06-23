@@ -1,5 +1,7 @@
 package net.dongliu.vcdiff.utils;
 
+import java.util.Arrays;
+
 /**
  *
  * @author dongliu
@@ -12,7 +14,7 @@ public class Misc {
      * @param b the byte
      * @return short value ,always positive
      */
-    public static short b(byte b) {
+    public static short unsignedToShort(byte b) {
         return (short) (b & 0xFF);
     }
 

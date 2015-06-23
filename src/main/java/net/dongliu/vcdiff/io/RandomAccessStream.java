@@ -31,6 +31,11 @@ public interface RandomAccessStream extends Closeable {
 
     void write(byte b) throws IOException;
 
+    /**
+     * The data size of this stream
+     *
+     * @throws IOException
+     */
     int length() throws IOException;
 
     /**
@@ -44,12 +49,18 @@ public interface RandomAccessStream extends Closeable {
     RandomAccessStream slice(int length) throws IOException;
 
     /**
-     * is readOnly?
+     * If is read only
      *
      * @return
      */
     boolean isReadOnly();
 
+    /**
+     * Read one next byte
+     *
+     * @return -1 if reach the end of stream, otherwise the next byte value in int
+     * @throws IOException
+     */
     int read() throws IOException;
 
 }

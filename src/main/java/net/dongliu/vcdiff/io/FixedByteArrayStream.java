@@ -1,5 +1,7 @@
 package net.dongliu.vcdiff.io;
 
+import net.dongliu.vcdiff.utils.ByteBufferUtils;
+
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -16,20 +18,23 @@ public class FixedByteArrayStream implements RandomAccessStream {
     private boolean readOnly;
 
     /**
-     * Constructs a new ByteArraySeekableSource.
+     * Constructs a new ByteArray Source.
      */
     public FixedByteArrayStream(byte[] source) {
         this(source, false);
     }
 
     /**
-     * Constructs a new ByteArraySeekableSource.
+     * Constructs a new ByteArray Source.
      */
     public FixedByteArrayStream(byte[] source, boolean readOnly) {
         this.buffer = ByteBuffer.wrap(source);
         this.readOnly = readOnly;
     }
 
+    /**
+     * Constructs a new ByteArray Source.
+     */
     public FixedByteArrayStream(ByteBuffer bytebuffer) {
         this.buffer = bytebuffer;
         this.readOnly = bytebuffer.isReadOnly();
@@ -45,7 +50,7 @@ public class FixedByteArrayStream implements RandomAccessStream {
 
     @Override
     public void close() throws IOException {
-        // do nothing.
+        ByteBufferUtils.free(this.buffer);
         this.buffer = null;
     }
 

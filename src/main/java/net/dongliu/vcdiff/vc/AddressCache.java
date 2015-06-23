@@ -68,10 +68,10 @@ public class AddressCache {
     public int decodeAddress(int here, short mode) throws IOException {
         int address;
 
-        if (mode == 0) {
+        if (mode == Vcdiff.VCD_SELF_MODE) {
             // The address was encoded by itself as an integer
             address = IOUtils.readVarIntBE(addressStream);
-        } else if (mode == 1) {
+        } else if (mode == Vcdiff.VCD_HERE_MODE) {
             // The address was encoded as the integer value "here - addr"
             address = here - IOUtils.readVarIntBE(addressStream);
         } else if (mode <= nearSize + 1) {
